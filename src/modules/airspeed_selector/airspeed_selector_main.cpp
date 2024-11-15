@@ -128,7 +128,6 @@ private:
 	uORB::Subscription _launch_detection_status_sub{ORB_ID(launch_detection_status)};
 	uORB::SubscriptionMultiArray<airspeed_s, MAX_NUM_AIRSPEED_SENSORS> _airspeed_subs{ORB_ID::airspeed};
 
-
 	tecs_status_s _tecs_status {};
 	estimator_status_s _estimator_status {};
 	vehicle_acceleration_s _accel {};
@@ -178,6 +177,7 @@ private:
 	float _param_fw_thr_max{0.0f};
 
 	DEFINE_PARAMETERS(
+		(ParamInt<px4::params::ASPD_WIND>) _param_aspd_wind, /* Added new wind param for avian drone*/
 		(ParamFloat<px4::params::ASPD_WIND_NSD>) _param_aspd_wind_nsd,
 		(ParamFloat<px4::params::ASPD_SCALE_NSD>) _param_aspd_scale_nsd,
 		(ParamFloat<px4::params::ASPD_TAS_NOISE>) _param_west_tas_noise,

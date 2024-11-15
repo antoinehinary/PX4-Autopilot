@@ -110,6 +110,20 @@ AirspeedValidator::get_wind_estimator_states(uint64_t timestamp)
 	return wind_est;
 }
 
+int32_t AirspeedValidator::get_aspd_wind_value()
+{
+    int32_t aspd_wind_value = 2;
+    param_t param_handle_aspd_wind = param_find("ASPD_WIND");
+
+    if (param_handle_aspd_wind != PARAM_INVALID) {
+        param_get(param_handle_aspd_wind, &aspd_wind_value);
+    } else {
+        PX4_ERR("ASPD_WIND parameter not found");
+    }
+
+    return aspd_wind_value;
+}
+
 void
 AirspeedValidator::update_CAS_scale_validated(bool gnss_valid, const matrix::Vector3f &vI, float airspeed_true_raw)
 {

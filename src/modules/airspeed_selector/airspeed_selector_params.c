@@ -1,3 +1,14 @@
+/**
+ * Wind parameter for Actuator Effectiveness
+ *
+ * Defines the wind speed parameter for avian-inspired actuator effectiveness calculations.
+ *
+ * @min 1
+ * @max 10
+ * @unit m/s
+ * @group Airspeed Validator
+ */
+PARAM_DEFINE_INT32(ASPD_WIND, 2);
 
 /**
  * Wind estimator wind process noise spectral density

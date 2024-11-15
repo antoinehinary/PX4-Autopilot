@@ -44,6 +44,9 @@
 #include <lib/mathlib/math/filter/AlphaFilter.hpp>
 #include <lib/mathlib/math/filter/FilteredDerivative.hpp>
 
+#include <parameters/param.h>
+#include <px4_platform_common/log.h>
+
 
 using matrix::Dcmf;
 using matrix::Quatf;
@@ -78,6 +81,8 @@ class AirspeedValidator
 public:
 	AirspeedValidator();
 	~AirspeedValidator() = default;
+
+	int32_t get_aspd_wind_value(); // get the wind param value
 
 	void update_airspeed_validator(const airspeed_validator_update_data &input_data);
 
