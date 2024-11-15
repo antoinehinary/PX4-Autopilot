@@ -270,6 +270,10 @@ ControlAllocator::update_effectiveness_source()
 			tmp = new ActuatorEffectivenessHelicopterCoaxial(this);
 			break;
 
+		case EffectivenessSource::AVIAN_INSPIRED:
+			tmp = new ActuatorEffectivenessAvianInspired(this);
+			break;
+
 		default:
 			PX4_ERR("Unknown airframe");
 			break;

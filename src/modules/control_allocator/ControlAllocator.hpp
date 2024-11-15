@@ -42,6 +42,7 @@
 #pragma once
 
 #include <ActuatorEffectiveness.hpp>
+#include <ActuatorEffectivenessAvianInspired.hpp>
 #include <ActuatorEffectivenessMultirotor.hpp>
 #include <ActuatorEffectivenessStandardVTOL.hpp>
 #include <ActuatorEffectivenessTiltrotorVTOL.hpp>
@@ -158,6 +159,7 @@ private:
 		HELICOPTER_TAIL_ESC = 10,
 		HELICOPTER_TAIL_SERVO = 11,
 		HELICOPTER_COAXIAL = 12,
+		AVIAN_INSPIRED = 14,
 	};
 
 	enum class FailureMode {

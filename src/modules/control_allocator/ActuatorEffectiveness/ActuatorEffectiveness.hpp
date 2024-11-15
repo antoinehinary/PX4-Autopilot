@@ -104,6 +104,11 @@ public:
 		int addActuator(ActuatorType type, const matrix::Vector3f &torque, const matrix::Vector3f &thrust);
 
 		/**
+		 * Add an actuator for avian inspired to the selected matrix, returning the index, or -1 on error
+		 */
+		int addActuatoravian(ActuatorType type, const matrix::Vector3f &torque, const matrix::Vector3f &thrust);
+
+		/**
 		 * Call this after manually adding N actuators to the selected matrix
 		 */
 		void actuatorsAdded(ActuatorType type, int count);

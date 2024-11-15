@@ -62,6 +62,32 @@ int ActuatorEffectiveness::Configuration::addActuator(ActuatorType type, const m
 	return num_actuators_matrix[selected_matrix]++;
 }
 
+int ActuatorEffectiveness::Configuration::addActuatoravian(ActuatorType type, const matrix::Vector3f &torque,
+		const matrix::Vector3f &thrust)
+{
+	int actuator_idx = num_actuators_matrix[selected_matrix];
+
+	if (actuator_idx >= NUM_ACTUATORS) {
+		PX4_ERR("Too many actuators");
+		return -1;
+	}
+
+	if ((int)type < (int)ActuatorType::COUNT - 1 && num_actuators[(int)type + 1] > 0) {
+		PX4_ERR("Trying to add actuators in the wrong order (add motors first, then servos)");
+		return -1;
+	}
+
+	effectiveness_matrices[selected_matrix](ControlAllocation::ControlAxis::ROLL, actuator_idx) = torque(0);
+	effectiveness_matrices[selected_matrix](ControlAllocation::ControlAxis::PITCH, actuator_idx) = torque(1);
+	effectiveness_matrices[selected_matrix](ControlAllocation::ControlAxis::YAW, actuator_idx) = torque(2);
+	effectiveness_matrices[selected_matrix](ControlAllocation::ControlAxis::THRUST_X, actuator_idx) = thrust(0);
+	effectiveness_matrices[selected_matrix](ControlAllocation::ControlAxis::THRUST_Y, actuator_idx) = thrust(1);
+	effectiveness_matrices[selected_matrix](ControlAllocation::ControlAxis::THRUST_Z, actuator_idx) = thrust(2);
+	matrix_selection_indexes[totalNumActuators()] = selected_matrix;
+	++num_actuators[(int)type];
+	return num_actuators_matrix[selected_matrix]++;
+}
+
 void ActuatorEffectiveness::Configuration::actuatorsAdded(ActuatorType type, int count)
 {
 	int total_count = totalNumActuators();
