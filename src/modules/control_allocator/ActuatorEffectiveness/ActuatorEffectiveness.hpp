@@ -43,8 +43,44 @@
 
 #include <cstdint>
 
+#include <uORB/Subscription.hpp>
+#include <uORB/topics/parameter_update.h>
 #include <matrix/matrix/math.hpp>
+#include <uORB/topics/vehicle_odometry.h>
+#include <uORB/topics/actuator_servos.h>
+#include <uORB/topics/vehicle_angular_velocity.h>
 #include <uORB/topics/control_allocator_status.h>
+#include <uORB/topics/sensor_accel.h>
+#include <uORB/topics/vehicle_attitude.h>
+#include "/home/antoine/PX4-Autopilot/src/modules/airspeed_selector/AirspeedValidator.hpp"
+
+#include <uORB/uORB.h>
+#include <parameters/param.h>
+#include <cmath>
+
+#include <matrix/math.hpp>
+#include <math.h>
+
+
+constexpr double AIR_DENSITY = 1.225;         // kg/m^3, standard air density at sea level (ISA conditions)
+constexpr double TAIL_LENGTH = 0.22;          // in meters
+constexpr double TAIL_INITIAL_WIDTH = 0.07;   // in meters
+constexpr double MIN_TAIL_TWIST_ANGLE = -20.0; // in degrees
+constexpr double MAX_TAIL_TWIST_ANGLE = 20.0;  // in degrees
+constexpr double MIN_TAIL_AREA = 0.0584; // in m^2 // redefined in .hpp
+constexpr double MAX_TAIL_AREA = 0.461;  // in m^2 // redefined in .hpp
+constexpr double MIN_TAIL_PITCH_ANGLE = -30.0; // in degrees
+constexpr double MAX_TAIL_PITCH_ANGLE = 30.0;  // in degrees
+constexpr double MIN_TAIL_EXPANSION_ANGLE = -60.0; // in degrees
+constexpr double MAX_TAIL_EXPANSION_ANGLE = 60.0;  // in degrees
+constexpr double MAX_WING_LENGTH = 0.5;       // in meters
+
+// Wing
+constexpr double WING_SPAN = 1.0;             // in meters
+constexpr double WING_WIDTH = 0.3;           // in meters
+constexpr double BODY_LENGTH = 0.5;	      // in meters
+constexpr double MIN_WING_LENGTH = 0.38;      // in meters
+constexpr double DT = 0.01;      // in meters
 
 enum class AllocationMethod {
 	NONE = -1,
@@ -66,6 +102,62 @@ enum class EffectivenessUpdateReason {
 	MOTOR_ACTIVATION_UPDATE = 2,
 };
 
+template <typename T, size_t N>
+struct SimpleArray {
+    T data[N];
+
+    // Access operator
+    T& operator[](size_t index) {
+        return data[index];
+    }
+
+    // Const access operator
+    const T& operator[](size_t index) const {
+        return data[index];
+    }
+
+    // Fill method
+    void fill(const T& value) {
+        for (size_t i = 0; i < N; ++i) {
+            data[i] = value;
+        }
+    }
+
+    // Size method
+    constexpr size_t size() const {
+        return N;
+    }
+};
+
+// Define the ServoControl struct
+struct ServoControl
+{
+	uint64_t timestamp;         // time since system start (microseconds)
+	uint64_t timestamp_sample;  // timestamp the data this control response is based on was sampled
+
+	static constexpr uint8_t NUM_CONTROLS = 8;
+	SimpleArray<float, NUM_CONTROLS> control; // array to hold control values ranging from [-1, 1]
+
+	// Constructor to initialize values
+	ServoControl()
+		: timestamp(0), timestamp_sample(0)
+	{
+		control.fill(NAN); // Initialize all controls to NaN by default to represent disarmed state
+	}
+
+	// bool to check for validity
+	bool valid;
+};
+
+struct BodyFrameVelocities {
+	double vx; // in m/s
+	double vz; // in m/s
+	double vy; // in m/s
+	double pitch_angle; // in degrees
+	double pitch_angle_rad; // in radians
+	double angle_of_attack; // in degrees
+	bool valid;
+};
 
 class ActuatorEffectiveness
 {
@@ -98,6 +190,7 @@ public:
 	};
 
 	struct Configuration {
+
 		/**
 		 * Add an actuator to the selected matrix, returning the index, or -1 on error
 		 */
@@ -106,7 +199,7 @@ public:
 		/**
 		 * Add an actuator for avian inspired to the selected matrix, returning the index, or -1 on error
 		 */
-		int addActuatoravian(ActuatorType type, const matrix::Vector3f &torque, const matrix::Vector3f &thrust);
+		int addActuatoravian(ActuatorType type, matrix::Vector3f &torque, matrix::Vector3f &thrust);
 
 		/**
 		 * Call this after manually adding N actuators to the selected matrix
@@ -127,6 +220,87 @@ public:
 
 		uint8_t matrix_selection_indexes[NUM_ACTUATORS * MAX_NUM_MATRICES];
 		int num_actuators[(int)ActuatorType::COUNT];
+
+		/**
+		 * Maps a value from one range to another.
+		 */
+		double mapRange(double value, double input_min, double input_max, double output_min, double output_max);
+
+		/**
+		 * Computes aerodynamic force using a flat-plate model.
+		 */
+		SimpleArray<double, 3> flatPlateForce(const SimpleArray<double, 3> &lift_dir,
+			const SimpleArray<double, 3> &velocity, double surface_area, double alpha);
+
+		/**
+		 * Calculates the lift coefficient based on angle of attack.
+		 */
+		double liftCoefficient(double alpha);
+
+		/**
+		 * Calculates the drag coefficient based on angle of attack.
+		 */
+		double dragCoefficient(double alpha);
+
+		/**
+		 * Converts degrees to radians.
+		 */
+		double toRadians(double degrees);
+
+		/**
+		 * Calculates the Euclidean norm (magnitude) of a 3D vector.
+		 */
+		double norm(const SimpleArray<double, 3> &vec);
+
+		/**
+		 * Normalizes a 3D vector to unit length.
+		 */
+		SimpleArray<double, 3> normalize(const SimpleArray<double, 3> &vec);
+
+		/**
+		 * Performs vector addition for two 3D vectors.
+		 */
+		SimpleArray<double, 3> add(const SimpleArray<double, 3> &vec1, const SimpleArray<double, 3> &vec2);
+
+		/**
+		 * Scales a 3D vector by a scalar value.
+		 */
+		SimpleArray<double, 3> multiply(const SimpleArray<double, 3> &vec, double scalar);
+
+		/**
+		 * Computes the aerodynamic direction vector.
+		 */
+		SimpleArray<double, 3> getDirectionVector(double angle_of_attack, double twist_angle);
+
+		/**
+		 * Extracts the servo control input.
+		 */
+		ServoControl getServoControlData();
+
+		/**
+		 * Extracts the body velocities and needed angles.
+		 */
+		BodyFrameVelocities extractBodyFrameVelocities();
+
+		/**
+		 * Subscriptions to required topics.
+		 * These provide the body velocities and servo control values.
+		 */
+		uORB::Subscription _vehicle_odometry_sub{ORB_ID(vehicle_odometry)};
+		uORB::Subscription _actuator_servos_sub{ORB_ID(actuator_servos)};
+		uORB::Subscription _vehicle_angular_velocity_sub{ORB_ID(vehicle_angular_velocity)};
+		uORB::Subscription _sensor_accel_sub{ORB_ID(sensor_accel)};
+		uORB::Subscription _vehicle_attitude_sub{ORB_ID(vehicle_attitude)};
+
+
+		double tail_area = MAX_TAIL_AREA;
+		double wing_length = MAX_WING_LENGTH;       // Default to max wing length
+		double wing_area = wing_length * WING_WIDTH;
+		double wing_offset = 0.0;
+		double tail_pitch_angle = 0.0;
+		double tail_twist_angle = 0.0;
+		double tail_expansion_angle = 0.0;
+
 	};
 
 	/**
@@ -227,4 +401,6 @@ public:
 protected:
 	FlightPhase _flight_phase{FlightPhase::HOVER_FLIGHT};
 	uint32_t _stopped_motors_mask{0};
+
+
 };

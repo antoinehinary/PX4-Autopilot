@@ -39,6 +39,7 @@
 
 #include <uORB/topics/normalized_unsigned_setpoint.h>
 
+
 class ActuatorEffectivenessAvianInspired : public ModuleParams, public ActuatorEffectiveness
 {
 public:
@@ -54,6 +55,7 @@ public:
 	void updateSetpoint(const matrix::Vector<float, NUM_AXES> &control_sp, int matrix_index,
 			    ActuatorVector &actuator_sp, const matrix::Vector<float, NUM_ACTUATORS> &actuator_min,
 			    const matrix::Vector<float, NUM_ACTUATORS> &actuator_max) override;
+
 
 private:
 	ActuatorEffectivenessRotors _rotors;
