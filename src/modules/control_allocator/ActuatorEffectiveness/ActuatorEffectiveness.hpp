@@ -46,6 +46,25 @@
 #include <matrix/matrix/math.hpp>
 #include <uORB/topics/control_allocator_status.h>
 
+constexpr double AIR_DENSITY = 1.225;         // kg/m^3, standard air density at sea level (ISA conditions)
+constexpr double TAIL_LENGTH = 0.22;          // in meters
+constexpr double TAIL_INITIAL_WIDTH = 0.07;   // in meters
+constexpr double MIN_TAIL_TWIST_ANGLE = -20.0; // in degrees
+constexpr double MAX_TAIL_TWIST_ANGLE = 20.0;  // in degrees
+constexpr double MIN_TAIL_AREA = 0.0584; // in m^2
+constexpr double MAX_TAIL_AREA = 0.461;  // in m^2
+constexpr double MIN_TAIL_PITCH_ANGLE = -30.0; // in degrees
+constexpr double MAX_TAIL_PITCH_ANGLE = 30.0;  // in degrees
+constexpr double MIN_TAIL_EXPANSION_ANGLE = -60.0; // in degrees
+constexpr double MAX_TAIL_EXPANSION_ANGLE = 60.0;  // in degrees
+constexpr double MAX_WING_LENGTH = 0.5;       // in meters
+
+// Wing
+constexpr double WING_SPAN = 1.0;             // in meters
+constexpr double WING_WIDTH = 0.3;           // in meters
+constexpr double BODY_LENGTH = 0.5;	      // in meters
+constexpr double MIN_WING_LENGTH = 0.38;      // in meters
+
 enum class AllocationMethod {
 	NONE = -1,
 	PSEUDO_INVERSE = 0,
@@ -65,6 +84,34 @@ enum class EffectivenessUpdateReason {
 	CONFIGURATION_UPDATE = 1,
 	MOTOR_ACTIVATION_UPDATE = 2,
 };
+
+template <typename T, size_t N>
+struct SimpleArray {
+    T data[N];
+
+    // Access operator
+    T& operator[](size_t index) {
+        return data[index];
+    }
+
+    // Const access operator
+    const T& operator[](size_t index) const {
+        return data[index];
+    }
+
+    // Fill method
+    void fill(const T& value) {
+        for (size_t i = 0; i < N; ++i) {
+            data[i] = value;
+        }
+    }
+
+    // Size method
+    constexpr size_t size() const {
+        return N;
+    }
+};
+
 
 
 class ActuatorEffectiveness
@@ -114,6 +161,31 @@ public:
 		void actuatorsAdded(ActuatorType type, int count);
 
 		int totalNumActuators() const;
+
+		double mapRange(double value, double input_min, double input_max, double output_min, double output_max);
+
+		SimpleArray<double, 3> getDirectionVector(double angle_of_attack, double twist_angle);
+
+		SimpleArray<double, 3> flatPlateForce(const SimpleArray<double, 3>& direction, const SimpleArray<double, 3>& velocity,
+                                                                          double surface_area, double alpha);
+
+		double liftCoefficient(double alpha);
+
+		double dragCoefficient(double alpha);
+
+		double toRadians(double degrees);
+
+		double norm(const SimpleArray<double, 3>& vec);
+
+		SimpleArray<double, 3> normalize(const SimpleArray<double, 3>& vec);
+
+		SimpleArray<double, 3> crossProduct(const SimpleArray<double, 3>& vec1, const SimpleArray<double, 3>& vec2);
+
+		SimpleArray<double, 3> add(const SimpleArray<double, 3>& vec1, const SimpleArray<double, 3>& vec2);
+
+		SimpleArray<double, 3> subtract(const SimpleArray<double, 3>& vec1, const SimpleArray<double, 3>& vec2);
+
+		SimpleArray<double, 3> multiply(const SimpleArray<double, 3>& vec, double scalar);
 
 		/// Configured effectiveness matrix. Actuators are expected to be filled in order, motors first, then servos
 		EffectivenessMatrix effectiveness_matrices[MAX_NUM_MATRICES];
