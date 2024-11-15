@@ -1,0 +1,50 @@
+#!/bin/sh
+#
+# @name Avian Inspired Drone
+#
+# @type Avian Inspired Drone
+# @class VTOL
+#
+# @maintainer Your Name <your.email@example.com>
+#
+# Avian Inspired Drone configuration with custom control allocation settings.
+#
+
+# Load the default settings for Plane
+. ${R}etc/init.d/rc.fw_defaults
+
+# Set the custom airframe type for the Avian Inspired Drone
+param set-default MAV_TYPE 14
+param set-default CA_AIRFRAME 14
+
+param set-default CA_ROTOR_COUNT 1
+param set-default CA_ROTOR0_PX 0.15
+
+param set-default CA_SV_CS_COUNT 5
+
+param set-default CA_SV_CS2_TYPE 12
+param set-default CA_SV_CS2_TRQ_P -0.5
+param set-default CA_SV_CS2_TRQ_R -0.5
+param set-default CA_SV_CS2_TRQ_Y 0.0
+
+param set-default CA_SV_CS3_TYPE 12
+param set-default CA_SV_CS3_TRQ_P -0.5
+param set-default CA_SV_CS3_TRQ_R 0.5
+param set-default CA_SV_CS3_TRQ_Y 0.0
+
+param set-default CA_SV_CS4_TYPE 12
+param set-default CA_SV_CS4_TRQ_P 1.0
+param set-default CA_SV_CS4_TRQ_R 0.0
+param set-default CA_SV_CS4_TRQ_Y 0.0
+
+param set-default CA_SV_CS5_TYPE 12
+param set-default CA_SV_CS5_TRQ_P 0.1
+param set-default CA_SV_CS5_TRQ_R 0.3
+param set-default CA_SV_CS5_TRQ_Y 0.6
+
+param set-default CA_SV_CS6_TYPE 12
+param set-default CA_SV_CS6_TRQ_P 1.0
+param set-default CA_SV_CS6_TRQ_R 0.0
+param set-default CA_SV_CS6_TRQ_Y 0.0
+
+param set-default SYS_HAS_NUM_ASPD 0
