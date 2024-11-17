@@ -43,8 +43,16 @@
 
 #include <cstdint>
 
+#include <uORB/Subscription.hpp>
 #include <matrix/matrix/math.hpp>
+#include <uORB/topics/sensor_accel.h>
+#include <uORB/topics/actuator_servos.h>
+#include <uORB/topics/vehicle_attitude.h>
 #include <uORB/topics/control_allocator_status.h>
+#include <uORB/topics/vehicle_angular_velocity.h>
+
+// include for air speed
+#include </home/antoine/PX4-Autopilot/src/modules/airspeed_selector/AirspeedValidator.hpp>
 
 constexpr double AIR_DENSITY = 1.225;         // kg/m^3, standard air density at sea level (ISA conditions)
 constexpr double TAIL_LENGTH = 0.22;          // in meters
@@ -64,6 +72,7 @@ constexpr double WING_SPAN = 1.0;             // in meters
 constexpr double WING_WIDTH = 0.3;           // in meters
 constexpr double BODY_LENGTH = 0.5;	      // in meters
 constexpr double MIN_WING_LENGTH = 0.38;      // in meters
+constexpr double DT = 0.01; // seconds
 
 enum class AllocationMethod {
 	NONE = -1,
@@ -112,7 +121,35 @@ struct SimpleArray {
     }
 };
 
+// Define the ServoControl struct
+struct ServoControl
+{
+    uint64_t timestamp;         // time since system start (microseconds)
+    uint64_t timestamp_sample;  // timestamp the data this control response is based on was sampled
 
+    static constexpr uint8_t NUM_CONTROLS = 8;
+    SimpleArray<float, NUM_CONTROLS> control; // array to hold control values ranging from [-1, 1]
+
+    // Constructor to initialize values
+    ServoControl()
+        : timestamp(0), timestamp_sample(0)
+    {
+        control.fill(NAN); // Initialize all controls to NaN by default to represent disarmed state
+    }
+
+    // bool to check for validity
+    bool valid;
+};
+
+struct BodyFrameVelocities {
+	double vx; // in m/s
+	double vz; // in m/s
+	double vy; // in m/s
+	double pitch_angle; // in degrees
+	double pitch_angle_rad; // in radians
+	double angle_of_attack; // in degrees
+	bool valid;
+};
 
 class ActuatorEffectiveness
 {
@@ -190,6 +227,10 @@ public:
 		/// Configured effectiveness matrix. Actuators are expected to be filled in order, motors first, then servos
 		EffectivenessMatrix effectiveness_matrices[MAX_NUM_MATRICES];
 
+		ServoControl getServoControlData();
+
+		BodyFrameVelocities extractBodyFrameVelocities();
+
 		int num_actuators_matrix[MAX_NUM_MATRICES]; ///< current amount, and next actuator index to fill in to effectiveness_matrices
 		ActuatorVector trim[MAX_NUM_MATRICES];
 
@@ -199,6 +240,18 @@ public:
 
 		uint8_t matrix_selection_indexes[NUM_ACTUATORS * MAX_NUM_MATRICES];
 		int num_actuators[(int)ActuatorType::COUNT];
+
+	    	uORB::Subscription _sensor_accel_sub{ORB_ID(sensor_accel)};
+		uORB::Subscription _actuator_servos_sub{ORB_ID(actuator_servos)};
+		uORB::Subscription _vehicle_attitude_sub{ORB_ID(vehicle_attitude)};
+		uORB::Subscription _vehicle_angular_velocity_sub{ORB_ID(vehicle_angular_velocity)};
+
+
+		// variables for speed computations
+		double last_vel_x = 0;
+		double last_vel_y = 0;
+		double last_vel_z = 0;
+
 	};
 
 	/**

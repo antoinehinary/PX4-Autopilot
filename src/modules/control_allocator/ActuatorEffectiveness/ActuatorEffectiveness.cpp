@@ -63,29 +63,39 @@ int ActuatorEffectiveness::Configuration::addActuator(ActuatorType type, const m
 }
 
 int ActuatorEffectiveness::Configuration::addActuatoravian(ActuatorType type, const matrix::Vector3f &torque,
-		const matrix::Vector3f &thrust)
+        const matrix::Vector3f &thrust)
 {
-	int actuator_idx = num_actuators_matrix[selected_matrix];
+    BodyFrameVelocities vel_body = extractBodyFrameVelocities();
+    ServoControl serv_ctrl = getServoControlData();
 
-	if (actuator_idx >= NUM_ACTUATORS) {
-		PX4_ERR("Too many actuators");
-		return -1;
-	}
+    // Dummy usage of vel_body and serv_ctrl to suppress warnings
+    double dummy_vx = vel_body.vx + vel_body.vy + vel_body.vz;
+    bool dummy_valid = vel_body.valid;
+    float dummy_control = serv_ctrl.control[0];
+    PX4_INFO("Dummy usage: vx=%f, valid=%d, control=%f", dummy_vx, dummy_valid, static_cast<double>(dummy_control));
 
-	if ((int)type < (int)ActuatorType::COUNT - 1 && num_actuators[(int)type + 1] > 0) {
-		PX4_ERR("Trying to add actuators in the wrong order (add motors first, then servos)");
-		return -1;
-	}
+    int actuator_idx = num_actuators_matrix[selected_matrix];
+    // float serv_ctrl_val = serv_ctrl.control[actuator_idx];
 
-	effectiveness_matrices[selected_matrix](ControlAllocation::ControlAxis::ROLL, actuator_idx) = torque(0);
-	effectiveness_matrices[selected_matrix](ControlAllocation::ControlAxis::PITCH, actuator_idx) = torque(1);
-	effectiveness_matrices[selected_matrix](ControlAllocation::ControlAxis::YAW, actuator_idx) = torque(2);
-	effectiveness_matrices[selected_matrix](ControlAllocation::ControlAxis::THRUST_X, actuator_idx) = thrust(0);
-	effectiveness_matrices[selected_matrix](ControlAllocation::ControlAxis::THRUST_Y, actuator_idx) = thrust(1);
-	effectiveness_matrices[selected_matrix](ControlAllocation::ControlAxis::THRUST_Z, actuator_idx) = thrust(2);
-	matrix_selection_indexes[totalNumActuators()] = selected_matrix;
-	++num_actuators[(int)type];
-	return num_actuators_matrix[selected_matrix]++;
+    if (actuator_idx >= NUM_ACTUATORS) {
+        PX4_ERR("Too many actuators");
+        return -1;
+    }
+
+    if ((int)type < (int)ActuatorType::COUNT - 1 && num_actuators[(int)type + 1] > 0) {
+        PX4_ERR("Trying to add actuators in the wrong order (add motors first, then servos)");
+        return -1;
+    }
+
+    effectiveness_matrices[selected_matrix](ControlAllocation::ControlAxis::ROLL, actuator_idx) = torque(0);
+    effectiveness_matrices[selected_matrix](ControlAllocation::ControlAxis::PITCH, actuator_idx) = torque(1);
+    effectiveness_matrices[selected_matrix](ControlAllocation::ControlAxis::YAW, actuator_idx) = torque(2);
+    effectiveness_matrices[selected_matrix](ControlAllocation::ControlAxis::THRUST_X, actuator_idx) = thrust(0);
+    effectiveness_matrices[selected_matrix](ControlAllocation::ControlAxis::THRUST_Y, actuator_idx) = thrust(1);
+    effectiveness_matrices[selected_matrix](ControlAllocation::ControlAxis::THRUST_Z, actuator_idx) = thrust(2);
+    matrix_selection_indexes[totalNumActuators()] = selected_matrix;
+    ++num_actuators[(int)type];
+    return num_actuators_matrix[selected_matrix]++;
 }
 
 void ActuatorEffectiveness::Configuration::actuatorsAdded(ActuatorType type, int count)
@@ -264,4 +274,102 @@ SimpleArray<double, 3> ActuatorEffectiveness::Configuration::getDirectionVector(
 
 	// Normalize and return the direction vector
 	return normalize(direction_vector);
+}
+
+BodyFrameVelocities ActuatorEffectiveness::Configuration::extractBodyFrameVelocities()
+{
+    BodyFrameVelocities result;
+    AirspeedValidator air_speed;
+    result.vx = 0.0f;
+    result.vy = 0.0f;
+    result.vz = 0.0f;
+    result.valid = false;
+
+    // Retrieve vehicle angular velocity
+    vehicle_angular_velocity_s angular_velocity_data;
+    if (!_vehicle_angular_velocity_sub.update(&angular_velocity_data)) {
+        PX4_ERR("Failed to update angular velocity data");
+        return result;
+    }
+
+    // Retrieve linear acceleration
+    sensor_accel_s accel_data;
+    if (!_sensor_accel_sub.update(&accel_data)) {
+        PX4_ERR("Failed to update linear acceleration data");
+        return result;
+    }
+
+    // Retrieve vehicle attitude for pitch angle
+    vehicle_attitude_s attitude_data;
+    if (!_vehicle_attitude_sub.update(&attitude_data)) {
+        PX4_ERR("Failed to update attitude data");
+        return result;
+    }
+
+    // Convert quaternion to Euler angles
+    matrix::Quatf q(attitude_data.q);
+    matrix::Eulerf euler_angles(q);
+
+    result.pitch_angle = euler_angles.theta() * (180.0f / static_cast<float>(M_PI));; // Convert pitch (theta) from radians to degrees
+    result.pitch_angle_rad = euler_angles.theta();
+
+    // Calculate linear velocities in x and z directions using instantaneous acceleration
+    // (This assumes that velocity can be approximated as acceleration * delta_time)
+    // Compute the change in velocity
+    double delta_vx = static_cast<double>(accel_data.x) * static_cast<double>(DT);
+    double delta_vy = static_cast<double>(accel_data.y) * static_cast<double>(DT);
+    double delta_vz = static_cast<double>(accel_data.z) * static_cast<double>(DT);
+
+    result.vx = last_vel_x + delta_vx; // Approximated or instantaneous velocity in the x-axis (forward)
+    result.vy = last_vel_y + delta_vy; // Approximated or instantaneous velocity in the x-axis (forward)
+    result.vz = last_vel_z + delta_vz; // Approximated or instantaneous velocity in the z-axis (downward)
+    result.valid = true;
+
+    // Update last velocities for the next call
+    last_vel_x = result.vx;
+    last_vel_y = result.vy;
+    last_vel_z = result.vz;
+
+    // Update velocities with explicit casting to double for result.vx and result.vz
+    result.vx = result.vx + static_cast<double>(cos(result.pitch_angle_rad) * air_speed.get_aspd_wind_value());
+    result.vz = result.vz + static_cast<double>(sin(result.pitch_angle_rad) * air_speed.get_aspd_wind_value());
+
+    // Calculate AoA using linear velocity in body frame
+    if (result.vx >= 0) {
+        result.angle_of_attack = atan2(result.vz, result.vx) * static_cast<double>(180.0f / static_cast<float>(M_PI)); // Convert to degrees
+    } else {
+        result.angle_of_attack = 0; // Null AoA if forward velocity is zero
+    }
+
+    return result;
+}
+
+
+// Function to update the ServoControl struct with the latest data from the topic
+ServoControl ActuatorEffectiveness::Configuration::getServoControlData()
+{
+    // Initialize the uORB message structure for the actuator_servos topic
+    actuator_servos_s actuator_servos_data;
+
+    // Initialize a ServoControl struct to hold the data
+    ServoControl serv_ctrl;
+
+    // Check if there's new data available and copy it to actuator_servos_data
+    if (_actuator_servos_sub.update(&actuator_servos_data)) {
+        // If new data is available, fill the serv_ctrl struct
+        serv_ctrl.timestamp = actuator_servos_data.timestamp;
+        serv_ctrl.timestamp_sample = actuator_servos_data.timestamp_sample;
+
+        // Fill the control array
+        for (size_t i = 0; i < ServoControl::NUM_CONTROLS; ++i) {
+            serv_ctrl.control[i] = actuator_servos_data.control[i];
+        }
+
+        serv_ctrl.valid = true; // Mark the struct as valid since we received data
+    } else {
+        PX4_WARN("No new servo data available");
+        serv_ctrl.valid = false; // Mark the struct as invalid if no new data was available
+    }
+
+    return serv_ctrl;
 }
