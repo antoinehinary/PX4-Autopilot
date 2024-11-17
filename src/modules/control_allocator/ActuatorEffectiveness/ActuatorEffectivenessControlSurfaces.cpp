@@ -154,7 +154,21 @@ void ActuatorEffectivenessControlSurfaces::updateParams()
 bool ActuatorEffectivenessControlSurfaces::addActuators(Configuration &configuration)
 {
 	for (int i = 0; i < _count; i++) {
-		int actuator_idx = configuration.addActuatoravian(ActuatorType::SERVOS, _params[i].torque, Vector3f{});
+		int actuator_idx = configuration.addActuator(ActuatorType::SERVOS, _params[i].torque, Vector3f{});
+
+		if (actuator_idx >= 0) {
+			configuration.trim[configuration.selected_matrix](actuator_idx) = _params[i].trim;
+		}
+	}
+
+	return true;
+}
+
+bool ActuatorEffectivenessControlSurfaces::addActuatorsavian(Configuration &configuration, ServoControl &serv_ctrl)
+{
+	for (int i = 0; i < _count; i++) {
+		int actuator_idx = configuration.addActuatoravian(ActuatorType::SERVOS, _params[i].torque, Vector3f{}, serv_ctrl);
+		// int actuator_idx = configuration.addActuatoravian(ActuatorType::SERVOS, _params[i].torque, Vector3f{}, vel_body, serv_ctrl);
 
 		if (actuator_idx >= 0) {
 			configuration.trim[configuration.selected_matrix](actuator_idx) = _params[i].trim;

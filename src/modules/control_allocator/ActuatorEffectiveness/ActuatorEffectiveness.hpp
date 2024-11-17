@@ -190,7 +190,8 @@ public:
 		/**
 		 * Add an actuator for avian inspired to the selected matrix, returning the index, or -1 on error
 		 */
-		int addActuatoravian(ActuatorType type, const matrix::Vector3f &torque, const matrix::Vector3f &thrust);
+		int addActuatoravian(ActuatorType type, const matrix::Vector3f &torque, const matrix::Vector3f &thrust, ServoControl &serv_ctrl);
+		// int addActuatoravian(ActuatorType type, const matrix::Vector3f &torque, const matrix::Vector3f &thrust, BodyFrameVelocities &vel_body, ServoControl &serv_ctrl);
 
 		/**
 		 * Call this after manually adding N actuators to the selected matrix
@@ -199,37 +200,10 @@ public:
 
 		int totalNumActuators() const;
 
-		double mapRange(double value, double input_min, double input_max, double output_min, double output_max);
-
-		SimpleArray<double, 3> getDirectionVector(double angle_of_attack, double twist_angle);
-
-		SimpleArray<double, 3> flatPlateForce(const SimpleArray<double, 3>& direction, const SimpleArray<double, 3>& velocity,
-                                                                          double surface_area, double alpha);
-
-		double liftCoefficient(double alpha);
-
-		double dragCoefficient(double alpha);
-
-		double toRadians(double degrees);
-
-		double norm(const SimpleArray<double, 3>& vec);
-
-		SimpleArray<double, 3> normalize(const SimpleArray<double, 3>& vec);
-
-		SimpleArray<double, 3> crossProduct(const SimpleArray<double, 3>& vec1, const SimpleArray<double, 3>& vec2);
-
-		SimpleArray<double, 3> add(const SimpleArray<double, 3>& vec1, const SimpleArray<double, 3>& vec2);
-
-		SimpleArray<double, 3> subtract(const SimpleArray<double, 3>& vec1, const SimpleArray<double, 3>& vec2);
-
-		SimpleArray<double, 3> multiply(const SimpleArray<double, 3>& vec, double scalar);
 
 		/// Configured effectiveness matrix. Actuators are expected to be filled in order, motors first, then servos
 		EffectivenessMatrix effectiveness_matrices[MAX_NUM_MATRICES];
 
-		ServoControl getServoControlData();
-
-		BodyFrameVelocities extractBodyFrameVelocities();
 
 		int num_actuators_matrix[MAX_NUM_MATRICES]; ///< current amount, and next actuator index to fill in to effectiveness_matrices
 		ActuatorVector trim[MAX_NUM_MATRICES];
@@ -240,17 +214,6 @@ public:
 
 		uint8_t matrix_selection_indexes[NUM_ACTUATORS * MAX_NUM_MATRICES];
 		int num_actuators[(int)ActuatorType::COUNT];
-
-	    	uORB::Subscription _sensor_accel_sub{ORB_ID(sensor_accel)};
-		uORB::Subscription _actuator_servos_sub{ORB_ID(actuator_servos)};
-		uORB::Subscription _vehicle_attitude_sub{ORB_ID(vehicle_attitude)};
-		uORB::Subscription _vehicle_angular_velocity_sub{ORB_ID(vehicle_angular_velocity)};
-
-
-		// variables for speed computations
-		double last_vel_x = 0;
-		double last_vel_y = 0;
-		double last_vel_z = 0;
 
 	};
 
