@@ -70,6 +70,8 @@ public:
 
 	double norm(const SimpleArray<double, 3>& vec);
 
+	double computePitchAnge();
+
 	SimpleArray<double, 3> normalize(const SimpleArray<double, 3>& vec);
 
 	SimpleArray<double, 3> crossProduct(const SimpleArray<double, 3>& vec1, const SimpleArray<double, 3>& vec2);
@@ -82,7 +84,7 @@ public:
 
 	ServoControl getServoControlData();
 
-	BodyFrameVelocities extractBodyFrameVelocities();
+	BodyFrameVelocities extractBodyFrameVelocities(double pitch);
 
 private:
 	ActuatorEffectivenessRotors _rotors;
@@ -100,6 +102,7 @@ private:
 	double last_vel_x = 0;
 	double last_vel_y = 0;
 	double last_vel_z = 0;
+	double pitch = 0;
 
 	int _first_control_surface_idx{0}; ///< applies to matrix 1
 

@@ -46,8 +46,10 @@ bool
 ActuatorEffectivenessAvianInspired::getEffectivenessMatrix(Configuration &configuration,
 		EffectivenessUpdateReason external_update)
 {
-	// BodyFrameVelocities vel_body = extractBodyFrameVelocities();
+	double pitch = computePitchAnge();
     	ServoControl serv_ctrl = getServoControlData();
+	BodyFrameVelocities vel_body = extractBodyFrameVelocities(pitch);
+	// PX4_INFO("pitch computed %f", pitch);
 
 	if (external_update == EffectivenessUpdateReason::NO_EXTERNAL_UPDATE) {
 		return false;
@@ -61,8 +63,8 @@ ActuatorEffectivenessAvianInspired::getEffectivenessMatrix(Configuration &config
 	// Control Surfaces
 	_first_control_surface_idx = configuration.num_actuators_matrix[0];
 	// const bool surfaces_added_successfully = _control_surfaces.addActuators(configuration); // communication work without any call function
-	const bool surfaces_added_successfully = _control_surfaces.addActuatorsavian(configuration, serv_ctrl);
-	// const bool surfaces_added_successfully = _control_surfaces.addActuatorsavian(configuration, vel_body, serv_ctrl);
+	// const bool surfaces_added_successfully = _control_surfaces.addActuatorsavian(configuration, serv_ctrl);
+	const bool surfaces_added_successfully = _control_surfaces.addActuatorsavian(configuration, vel_body, serv_ctrl);
 
 	return (rotors_added_successfully && surfaces_added_successfully);
 }
@@ -230,21 +232,34 @@ SimpleArray<double, 3> ActuatorEffectivenessAvianInspired::getDirectionVector(do
 	return normalize(direction_vector);
 }
 
-BodyFrameVelocities ActuatorEffectivenessAvianInspired::extractBodyFrameVelocities()
+double ActuatorEffectivenessAvianInspired::computePitchAnge()
+{
+    // Retrieve vehicle attitude for pitch angle
+    vehicle_attitude_s attitude_data;
+    if (!_vehicle_attitude_sub.update(&attitude_data)) {
+        PX4_ERR("Failed to update attitude data");
+        return pitch;
+    }
+
+    // Convert quaternion to Euler angles
+    matrix::Quatf q(attitude_data.q);
+    matrix::Eulerf euler_angles(q);
+
+	pitch = static_cast<double>(euler_angles.theta() * (180.0f / static_cast<float>(M_PI)));
+
+    return pitch;
+}
+
+BodyFrameVelocities ActuatorEffectivenessAvianInspired::extractBodyFrameVelocities(double pitch)
 {
     BodyFrameVelocities result;
     AirspeedValidator air_speed;
-    result.vx = 0.0f;
-    result.vy = 0.0f;
-    result.vz = 0.0f;
-    result.valid = false;
 
-    // Retrieve vehicle angular velocity
-    vehicle_angular_velocity_s angular_velocity_data;
-    if (!_vehicle_angular_velocity_sub.update(&angular_velocity_data)) {
-        PX4_ERR("Failed to update angular velocity data");
-        return result;
-    }
+    // Initialize result velocities and validity
+    result.vx = last_vel_x;
+    result.vy = last_vel_y;
+    result.vz = last_vel_z;
+    result.valid = false;
 
     // Retrieve linear acceleration
     sensor_accel_s accel_data;
@@ -253,50 +268,34 @@ BodyFrameVelocities ActuatorEffectivenessAvianInspired::extractBodyFrameVelociti
         return result;
     }
 
-    // Retrieve vehicle attitude for pitch angle
-    vehicle_attitude_s attitude_data;
-    if (!_vehicle_attitude_sub.update(&attitude_data)) {
-        PX4_ERR("Failed to update attitude data");
-        return result;
-    }
+    // Update velocities directly
+    result.vx += static_cast<double>(accel_data.x) * static_cast<double>(DT);
+    result.vy += static_cast<double>(accel_data.y) * static_cast<double>(DT);
+    result.vz += static_cast<double>(accel_data.z) * static_cast<double>(DT);
 
-    // Convert quaternion to Euler angles
-    matrix::Quatf q(attitude_data.q);
-    matrix::Eulerf euler_angles(q);
+    // Apply wind adjustment using pitch
+    double wind_adjustment = air_speed.get_aspd_wind_value();
+    result.vx += static_cast<double>(cos(pitch)) * wind_adjustment;
+    result.vz += static_cast<double>(sin(pitch)) * wind_adjustment;
 
-    result.pitch_angle = euler_angles.theta() * (180.0f / static_cast<float>(M_PI));; // Convert pitch (theta) from radians to degrees
-    result.pitch_angle_rad = euler_angles.theta();
-
-    // Calculate linear velocities in x and z directions using instantaneous acceleration
-    // (This assumes that velocity can be approximated as acceleration * delta_time)
-    // Compute the change in velocity
-    double delta_vx = static_cast<double>(accel_data.x) * static_cast<double>(DT);
-    double delta_vy = static_cast<double>(accel_data.y) * static_cast<double>(DT);
-    double delta_vz = static_cast<double>(accel_data.z) * static_cast<double>(DT);
-
-    result.vx = last_vel_x + delta_vx; // Approximated or instantaneous velocity in the x-axis (forward)
-    result.vy = last_vel_y + delta_vy; // Approximated or instantaneous velocity in the x-axis (forward)
-    result.vz = last_vel_z + delta_vz; // Approximated or instantaneous velocity in the z-axis (downward)
-    result.valid = true;
-
-    // Update last velocities for the next call
-    last_vel_x = result.vx;
-    last_vel_y = result.vy;
-    last_vel_z = result.vz;
-
-    // Update velocities with explicit casting to double for result.vx and result.vz
-    result.vx = result.vx + static_cast<double>(cos(result.pitch_angle_rad) * air_speed.get_aspd_wind_value());
-    result.vz = result.vz + static_cast<double>(sin(result.pitch_angle_rad) * air_speed.get_aspd_wind_value());
-
-    // Calculate AoA using linear velocity in body frame
+    // Calculate AoA (only if forward velocity is positive)
     if (result.vx >= 0) {
-        result.angle_of_attack = atan2(result.vz, result.vx) * static_cast<double>(180.0f / static_cast<float>(M_PI)); // Convert to degrees
+        result.angle_of_attack = atan2(result.vz, result.vx) * (180.0 / M_PI); // Convert to degrees
     } else {
         result.angle_of_attack = 0; // Null AoA if forward velocity is zero
     }
 
+    // Mark as valid
+    result.valid = true;
+
+    // Save updated velocities for next iteration
+    last_vel_x = result.vx;
+    last_vel_y = result.vy;
+    last_vel_z = result.vz;
+
     return result;
 }
+
 
 
 // Function to update the ServoControl struct with the latest data from the topic

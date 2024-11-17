@@ -82,8 +82,8 @@ public:
 	virtual ~ActuatorEffectivenessControlSurfaces() = default;
 
 	bool addActuators(Configuration &configuration);
-	bool addActuatorsavian(Configuration &configuration, ServoControl &serv_ctrl);
-	// bool addActuatorsavian(Configuration &configuration, BodyFrameVelocities &vel_body, ServoControl &serv_ctrl);
+	// bool addActuatorsavian(Configuration &configuration, ServoControl &serv_ctrl);
+	bool addActuatorsavian(Configuration &configuration, BodyFrameVelocities &vel_body, ServoControl &serv_ctrl);
 
 	const char *name() const override { return "Control Surfaces"; }
 

@@ -63,14 +63,14 @@ int ActuatorEffectiveness::Configuration::addActuator(ActuatorType type, const m
 }
 
 int ActuatorEffectiveness::Configuration::addActuatoravian(ActuatorType type, const matrix::Vector3f &torque,
-        const matrix::Vector3f &thrust, ServoControl &serv_ctrl)
+        const matrix::Vector3f &thrust,BodyFrameVelocities &vel_body, ServoControl &serv_ctrl)
 {
     // Dummy usage of vel_body and serv_ctrl to suppress warnings
-    // double dummy_vx = vel_body.vx + vel_body.vy + vel_body.vz;
-    // bool dummy_valid = vel_body.valid;
+    double dummy_vx = vel_body.vx + vel_body.vy + vel_body.vz;
+    bool dummy_valid = vel_body.valid;
     float dummy_control = serv_ctrl.control[0];
-    PX4_INFO("Dummy usage: control=%f", static_cast<double>(dummy_control));
-    // PX4_INFO("Dummy usage: vx=%f, valid=%d, control=%f", dummy_vx, dummy_valid, static_cast<double>(dummy_control));
+    // PX4_INFO("Dummy usage: control=%f", static_cast<double>(dummy_control));
+    PX4_INFO("Dummy usage: vx=%f, valid=%d, control=%f", dummy_vx, dummy_valid, static_cast<double>(dummy_control));
 
     int actuator_idx = num_actuators_matrix[selected_matrix];
     double serv_ctrl_val = serv_ctrl.control[actuator_idx];

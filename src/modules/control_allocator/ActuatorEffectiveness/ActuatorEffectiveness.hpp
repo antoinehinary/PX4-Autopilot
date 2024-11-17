@@ -190,8 +190,8 @@ public:
 		/**
 		 * Add an actuator for avian inspired to the selected matrix, returning the index, or -1 on error
 		 */
-		int addActuatoravian(ActuatorType type, const matrix::Vector3f &torque, const matrix::Vector3f &thrust, ServoControl &serv_ctrl);
-		// int addActuatoravian(ActuatorType type, const matrix::Vector3f &torque, const matrix::Vector3f &thrust, BodyFrameVelocities &vel_body, ServoControl &serv_ctrl);
+		// int addActuatoravian(ActuatorType type, const matrix::Vector3f &torque, const matrix::Vector3f &thrust, ServoControl &serv_ctrl);
+		int addActuatoravian(ActuatorType type, const matrix::Vector3f &torque, const matrix::Vector3f &thrust, BodyFrameVelocities &vel_body, ServoControl &serv_ctrl);
 
 		/**
 		 * Call this after manually adding N actuators to the selected matrix
