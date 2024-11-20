@@ -37,6 +37,14 @@
 #include "ActuatorEffectivenessRotors.hpp"
 #include "ActuatorEffectivenessControlSurfaces.hpp"
 
+#include <uORB/topics/vehicle_odometry.h>
+#include <uORB/Subscription.hpp>
+#include <uORB/Publication.hpp>
+#include <px4_platform_common/defines.h>
+#include <px4_platform_common/log.h>
+#include <matrix/matrix/math.hpp>
+
+#include <uORB/topics/vehicle_odometry.h>
 #include <uORB/topics/normalized_unsigned_setpoint.h>
 
 class ActuatorEffectivenessAvianInspired : public ModuleParams, public ActuatorEffectiveness
@@ -55,36 +63,11 @@ public:
 			    ActuatorVector &actuator_sp, const matrix::Vector<float, NUM_ACTUATORS> &actuator_min,
 			    const matrix::Vector<float, NUM_ACTUATORS> &actuator_max) override;
 
-	double mapRange(double value, double input_min, double input_max, double output_min, double output_max);
-
-	SimpleArray<double, 3> getDirectionVector(double angle_of_attack, double twist_angle);
-
-	SimpleArray<double, 3> flatPlateForce(const SimpleArray<double, 3>& direction, const SimpleArray<double, 3>& velocity,
-									double surface_area, double alpha);
-
-	double liftCoefficient(double alpha);
-
-	double dragCoefficient(double alpha);
-
-	double toRadians(double degrees);
-
-	double norm(const SimpleArray<double, 3>& vec);
-
-	double computePitchAnge();
-
-	SimpleArray<double, 3> normalize(const SimpleArray<double, 3>& vec);
-
-	SimpleArray<double, 3> crossProduct(const SimpleArray<double, 3>& vec1, const SimpleArray<double, 3>& vec2);
-
-	SimpleArray<double, 3> add(const SimpleArray<double, 3>& vec1, const SimpleArray<double, 3>& vec2);
-
-	SimpleArray<double, 3> subtract(const SimpleArray<double, 3>& vec1, const SimpleArray<double, 3>& vec2);
-
-	SimpleArray<double, 3> multiply(const SimpleArray<double, 3>& vec, double scalar);
+	double computePitchAngle();
 
 	ServoControl getServoControlData();
 
-	BodyFrameVelocities extractBodyFrameVelocities(double pitch);
+	BodyFrameVelocities extractBodyFrameVelocities();
 
 private:
 	ActuatorEffectivenessRotors _rotors;
@@ -92,10 +75,12 @@ private:
 
 	uORB::Subscription _flaps_setpoint_sub{ORB_ID(flaps_setpoint)};
 	uORB::Subscription _spoilers_setpoint_sub{ORB_ID(spoilers_setpoint)};
-	uORB::Subscription _sensor_accel_sub{ORB_ID(sensor_accel)};
+	uORB::Subscription _vehicle_odometry_sub{ORB_ID(vehicle_odometry)};
 	uORB::Subscription _actuator_servos_sub{ORB_ID(actuator_servos)};
 	uORB::Subscription _vehicle_attitude_sub{ORB_ID(vehicle_attitude)};
 	uORB::Subscription _vehicle_angular_velocity_sub{ORB_ID(vehicle_angular_velocity)};
+
+	uORB::Publication<vehicle_odometry_s> _vehicle_odometry_pub{ORB_ID(vehicle_odometry)};
 
 
 	// variables for speed computations

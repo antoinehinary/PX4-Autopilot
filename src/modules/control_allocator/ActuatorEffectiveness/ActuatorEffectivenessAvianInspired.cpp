@@ -44,30 +44,36 @@ ActuatorEffectivenessAvianInspired::ActuatorEffectivenessAvianInspired(ModulePar
 
 bool
 ActuatorEffectivenessAvianInspired::getEffectivenessMatrix(Configuration &configuration,
-		EffectivenessUpdateReason external_update)
+        EffectivenessUpdateReason external_update)
 {
-	double pitch = computePitchAnge();
-    	ServoControl serv_ctrl = getServoControlData();
-	BodyFrameVelocities vel_body = extractBodyFrameVelocities(pitch);
-	// PX4_INFO("pitch computed %f", pitch);
+    pitch = computePitchAngle();
+    ServoControl serv_ctrl = getServoControlData();
+    BodyFrameVelocities vel_body = extractBodyFrameVelocities();
 
-	if (external_update == EffectivenessUpdateReason::NO_EXTERNAL_UPDATE) {
-		return false;
-	}
+    vehicle_odometry_s odometry_msg = {};
+    odometry_msg.timestamp = hrt_absolute_time();
+    odometry_msg.velocity_frame = vehicle_odometry_s::VELOCITY_FRAME_BODY_FRD;
+    _vehicle_odometry_pub.publish(odometry_msg);
 
-	// Motors
-	_rotors.enablePropellerTorque(false);
-	const bool rotors_added_successfully = _rotors.addActuators(configuration);
-	_forwards_motors_mask = _rotors.getForwardsMotors();
+    // Ensure odometry_msg is used or published to avoid unused variable warnings
+    PX4_INFO("Odometry velocity_frame set to BODY_FRD");
 
-	// Control Surfaces
-	_first_control_surface_idx = configuration.num_actuators_matrix[0];
-	// const bool surfaces_added_successfully = _control_surfaces.addActuators(configuration); // communication work without any call function
-	// const bool surfaces_added_successfully = _control_surfaces.addActuatorsavian(configuration, serv_ctrl);
-	const bool surfaces_added_successfully = _control_surfaces.addActuatorsavian(configuration, vel_body, serv_ctrl);
+    if (external_update == EffectivenessUpdateReason::NO_EXTERNAL_UPDATE) {
+        return false;
+    }
 
-	return (rotors_added_successfully && surfaces_added_successfully);
+    // Motors
+    _rotors.enablePropellerTorque(false);
+    const bool rotors_added_successfully = _rotors.addActuators(configuration);
+    _forwards_motors_mask = _rotors.getForwardsMotors();
+
+    // Control Surfaces
+    _first_control_surface_idx = configuration.num_actuators_matrix[0];
+    const bool surfaces_added_successfully = _control_surfaces.addActuatorsavian(configuration, vel_body, serv_ctrl);
+
+    return (rotors_added_successfully && surfaces_added_successfully);
 }
+
 
 void ActuatorEffectivenessAvianInspired::updateSetpoint(const matrix::Vector<float, NUM_AXES> &control_sp,
 		int matrix_index, ActuatorVector &actuator_sp, const matrix::Vector<float, NUM_ACTUATORS> &actuator_min,
@@ -96,148 +102,12 @@ void ActuatorEffectivenessAvianInspired::allocateAuxilaryControls(const float dt
 
 
 /*Helper functions*/
-double ActuatorEffectivenessAvianInspired::mapRange(double value, double input_min, double input_max,
-		double output_min, double output_max)
-{
-	// Define a small epsilon value for floating-point comparison
-	constexpr double epsilon = 1e-6;
-
-	// Check if the input range is effectively zero
-	if (fabs(input_max - input_min) < epsilon) {
-		PX4_ERR("Invalid input range");
-		return output_min; // Return output_min as a fallback
-	}
-
-	// Linearly map the value from the input range to the output range
-	double scaled_value = (value - input_min) / (input_max - input_min);
-	return output_min + scaled_value * (output_max - output_min);
-}
-
-
-SimpleArray<double, 3> ActuatorEffectivenessAvianInspired::flatPlateForce(const SimpleArray<double, 3> &lift_dir,
-		const SimpleArray<double, 3> &velocity,
-		double surface_area, double alpha)
-{
-	// Define a small epsilon value for floating-point comparison
-	constexpr double epsilon = 1e-6;
-
-	if (fabs(surface_area) < epsilon || norm(velocity) < epsilon) {
-		return {0, 0, 0};
-	}
-
-	// Normalize the velocity and compute lift and drag directions
-	auto vel_norm = normalize(velocity);
-
-	// Compute dynamic pressure
-	double dynamic_pressure = 0.5 * AIR_DENSITY * std::pow(norm(velocity), 2);
-	double cl = liftCoefficient(toRadians(alpha));
-	double cd = dragCoefficient(toRadians(alpha));
-
-	// Compute lift and drag forces
-	auto lift_force = multiply(lift_dir, dynamic_pressure * surface_area * cl);
-	auto drag_force = multiply(vel_norm, dynamic_pressure * surface_area * cd);
-
-	// Return the total force (lift + drag)
-	return add(lift_force, drag_force);
-}
-
-double ActuatorEffectivenessAvianInspired::liftCoefficient(double alpha)
-{
-	double cl_baseline = 0.1;
-	return cl_baseline + 2 * std::sin(alpha) * std::cos(alpha);
-}
-
-double ActuatorEffectivenessAvianInspired::dragCoefficient(double alpha)
-{
-	double cd_baseline = 0.02;
-	return cd_baseline + 2 * std::pow(std::sin(alpha), 2);
-}
-
-double ActuatorEffectivenessAvianInspired::toRadians(double degrees)
-{
-	return degrees * M_PI / 180.0;
-}
-
-double ActuatorEffectivenessAvianInspired::norm(const SimpleArray<double, 3> &vec)
-{
-	return std::sqrt(vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2]);
-}
-
-SimpleArray<double, 3> ActuatorEffectivenessAvianInspired::crossProduct(const SimpleArray<double, 3> &vec1,
-		const SimpleArray<double, 3> &vec2)
-{
-	return {
-		vec1[1] *vec2[2] - vec1[2] *vec2[1],
-		vec1[2] *vec2[0] - vec1[0] *vec2[2],
-		vec1[0] *vec2[1] - vec1[1] *vec2[0]
-	};
-}
-
-SimpleArray<double, 3> ActuatorEffectivenessAvianInspired::add(const SimpleArray<double, 3> &vec1,
-		const SimpleArray<double, 3> &vec2)
-{
-	return {vec1[0] + vec2[0], vec1[1] + vec2[1], vec1[2] + vec2[2]};
-}
-
-SimpleArray<double, 3> ActuatorEffectivenessAvianInspired::subtract(const SimpleArray<double, 3> &vec1,
-		const SimpleArray<double, 3> &vec2)
-{
-	return {vec1[0] - vec2[0], vec1[1] - vec2[1], vec1[2] - vec2[2]};
-}
-
-SimpleArray<double, 3> ActuatorEffectivenessAvianInspired::multiply(const SimpleArray<double, 3> &vec, double scalar)
-{
-	return {vec[0] *scalar, vec[1] *scalar, vec[2] *scalar};
-}
-
-SimpleArray<double, 3> ActuatorEffectivenessAvianInspired::normalize(const SimpleArray<double, 3> &vec)
-{
-	double vec_norm = norm(vec);
-	constexpr double epsilon = 1e-9; // Small threshold value to avoid floating-point comparison
-
-	if (std::fabs(vec_norm) < epsilon) {
-		return {0.0, 0.0, 0.0};
-	}
-
-	return {vec[0] / vec_norm, vec[1] / vec_norm, vec[2] / vec_norm};
-}
-
-
-SimpleArray<double, 3> ActuatorEffectivenessAvianInspired::getDirectionVector(double angle_of_attack,
-		double twist_angle)
-{
-	// Convert angles to radians
-	double aoa_rad = toRadians(angle_of_attack);
-	double twist_rad = toRadians(twist_angle);
-
-	// Initial direction vector based on the angle of attack
-	SimpleArray<double, 3> direction_vector = {std::sin(aoa_rad), 0, -std::cos(aoa_rad)};
-
-	// Apply rotation for the twist angle (rotation about the x-axis)
-	SimpleArray<SimpleArray<double, 3>, 3> twist_rotation = {{
-			{1, 0, 0},
-			{0, std::cos(twist_rad), -std::sin(twist_rad)},
-			{0, std::sin(twist_rad), std::cos(twist_rad)}
-		}
-	};
-
-	// Apply the twist rotation matrix
-	for (int i = 0; i < 3; ++i) {
-		direction_vector[i] = twist_rotation[i][0] * direction_vector[0] +
-				      twist_rotation[i][1] * direction_vector[1] +
-				      twist_rotation[i][2] * direction_vector[2];
-	}
-
-	// Normalize and return the direction vector
-	return normalize(direction_vector);
-}
-
-double ActuatorEffectivenessAvianInspired::computePitchAnge()
+double ActuatorEffectivenessAvianInspired::computePitchAngle()
 {
     // Retrieve vehicle attitude for pitch angle
     vehicle_attitude_s attitude_data;
     if (!_vehicle_attitude_sub.update(&attitude_data)) {
-        PX4_ERR("Failed to update attitude data");
+        PX4_WARN("Failed to update attitude data");
         return pitch;
     }
 
@@ -245,33 +115,39 @@ double ActuatorEffectivenessAvianInspired::computePitchAnge()
     matrix::Quatf q(attitude_data.q);
     matrix::Eulerf euler_angles(q);
 
-	pitch = static_cast<double>(euler_angles.theta() * (180.0f / static_cast<float>(M_PI)));
+    pitch = static_cast<double>(euler_angles.theta() * (180.0f / static_cast<float>(M_PI)));
 
     return pitch;
 }
 
-BodyFrameVelocities ActuatorEffectivenessAvianInspired::extractBodyFrameVelocities(double pitch)
+BodyFrameVelocities ActuatorEffectivenessAvianInspired::extractBodyFrameVelocities()
 {
     BodyFrameVelocities result;
     AirspeedValidator air_speed;
 
     // Initialize result velocities and validity
-    result.vx = last_vel_x;
-    result.vy = last_vel_y;
-    result.vz = last_vel_z;
+    result.vx = 0.0f;
+    result.vy = 0.0f;
+    result.vz = 0.0f;
     result.valid = false;
 
-    // Retrieve linear acceleration
-    sensor_accel_s accel_data;
-    if (!_sensor_accel_sub.update(&accel_data)) {
-        PX4_ERR("Failed to update linear acceleration data");
+    // Retrieve the odometry data
+    vehicle_odometry_s odometry_data;
+    if (!_vehicle_odometry_sub.update(&odometry_data)) {
+        PX4_WARN("Failed to update odometry data");
         return result;
     }
 
-    // Update velocities directly
-    result.vx += static_cast<double>(accel_data.x) * static_cast<double>(DT);
-    result.vy += static_cast<double>(accel_data.y) * static_cast<double>(DT);
-    result.vz += static_cast<double>(accel_data.z) * static_cast<double>(DT);
+    // Check if the velocity frame is set to BODY_FRD
+    if (odometry_data.velocity_frame != vehicle_odometry_s::VELOCITY_FRAME_BODY_FRD) {
+        PX4_ERR("Velocity frame is not set to BODY_FRD");
+        return result;
+    }
+
+    // Use the velocity data directly
+    result.vx = static_cast<double>(odometry_data.velocity[0]); // Forward velocity
+    result.vy = static_cast<double>(odometry_data.velocity[1]); // Rightward velocity
+    result.vz = static_cast<double>(odometry_data.velocity[2]); // Downward velocity
 
     // Apply wind adjustment using pitch
     double wind_adjustment = air_speed.get_aspd_wind_value();
@@ -288,14 +164,8 @@ BodyFrameVelocities ActuatorEffectivenessAvianInspired::extractBodyFrameVelociti
     // Mark as valid
     result.valid = true;
 
-    // Save updated velocities for next iteration
-    last_vel_x = result.vx;
-    last_vel_y = result.vy;
-    last_vel_z = result.vz;
-
     return result;
 }
-
 
 
 // Function to update the ServoControl struct with the latest data from the topic

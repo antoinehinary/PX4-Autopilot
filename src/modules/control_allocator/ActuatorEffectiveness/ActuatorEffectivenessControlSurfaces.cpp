@@ -167,8 +167,9 @@ bool ActuatorEffectivenessControlSurfaces::addActuators(Configuration &configura
 bool ActuatorEffectivenessControlSurfaces::addActuatorsavian(Configuration &configuration, BodyFrameVelocities &vel_body, ServoControl &serv_ctrl)
 {
 	for (int i = 0; i < _count; i++) {
+		matrix::Vector3f thrust{0.0f, 0.0f, 0.0f};
 		// int actuator_idx = configuration.addActuatoravian(ActuatorType::SERVOS, _params[i].torque, Vector3f{}, serv_ctrl);
-		int actuator_idx = configuration.addActuatoravian(ActuatorType::SERVOS, _params[i].torque, Vector3f{}, vel_body, serv_ctrl);
+		int actuator_idx = configuration.addActuatoravian(ActuatorType::SERVOS, _params[i].torque, thrust, vel_body, serv_ctrl);
 
 		if (actuator_idx >= 0) {
 			configuration.trim[configuration.selected_matrix](actuator_idx) = _params[i].trim;

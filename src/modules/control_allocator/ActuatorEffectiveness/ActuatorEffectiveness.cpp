@@ -62,21 +62,20 @@ int ActuatorEffectiveness::Configuration::addActuator(ActuatorType type, const m
 	return num_actuators_matrix[selected_matrix]++;
 }
 
-int ActuatorEffectiveness::Configuration::addActuatoravian(ActuatorType type, const matrix::Vector3f &torque,
-        const matrix::Vector3f &thrust,BodyFrameVelocities &vel_body, ServoControl &serv_ctrl)
+int ActuatorEffectiveness::Configuration::addActuatoravian(ActuatorType type, matrix::Vector3f &torque,
+    	matrix::Vector3f &thrust,BodyFrameVelocities &vel_body, ServoControl &serv_ctrl)
 {
-    // Dummy usage of vel_body and serv_ctrl to suppress warnings
-    double dummy_vx = vel_body.vx + vel_body.vy + vel_body.vz;
-    bool dummy_valid = vel_body.valid;
-    float dummy_control = serv_ctrl.control[0];
-    // PX4_INFO("Dummy usage: control=%f", static_cast<double>(dummy_control));
-    PX4_INFO("Dummy usage: vx=%f, valid=%d, control=%f", dummy_vx, dummy_valid, static_cast<double>(dummy_control));
+    // // Dummy usage of vel_body and serv_ctrl to suppress warnings
+    // double dummy_vx = vel_body.vx + vel_body.vy + vel_body.vz;
+    // bool dummy_valid = vel_body.valid;
+    // // PX4_INFO("Dummy usage: control=%f", static_cast<double>(dummy_control));
+    // PX4_INFO("Dummy usage: vx=%f, valid=%d, control=%f", dummy_vx, dummy_valid, static_cast<double>(dummy_control));
 
     int actuator_idx = num_actuators_matrix[selected_matrix];
     double serv_ctrl_val = serv_ctrl.control[actuator_idx];
 
     // Dummy usage of serv_ctrl_val to suppress warning
-    PX4_INFO("Dummy serv_ctrl_val: %f", serv_ctrl_val);
+//     PX4_INFO("Dummy serv_ctrl_val: %f", serv_ctrl_val);
 
     if (actuator_idx >= NUM_ACTUATORS) {
         PX4_ERR("Too many actuators");
@@ -87,6 +86,97 @@ int ActuatorEffectiveness::Configuration::addActuatoravian(ActuatorType type, co
         PX4_ERR("Trying to add actuators in the wrong order (add motors first, then servos)");
         return -1;
     }
+
+    switch (actuator_idx) {
+    case 1: // Left wing area
+    case 2: { // Right wing area
+            // Map serv_ctrl_val from [-1, 1] to a wing area range
+            wing_length = mapRange(serv_ctrl_val, -1.0, 1.0, MIN_WING_LENGTH, MAX_WING_LENGTH);
+            wing_area = wing_length * WING_WIDTH;
+
+            // Compute the direction vector assuming no dihedral and twist
+            auto direction = getDirectionVector(vel_body.angle_of_attack, 0.0); // lift direction so upwards is -1
+            auto velocity = SimpleArray<double, 3> {vel_body.vx, vel_body.vy, vel_body.vz}; // in direction of flight so forward is +1
+
+            // Compute the aerodynamic force based on this configuration
+            auto force = flatPlateForce(direction, velocity, wing_area, vel_body.angle_of_attack);
+            thrust = {static_cast<float>(force[0]), static_cast<float>(force[1]), static_cast<float>(force[2])};
+
+            // Compute the torque using the force and the wing span as the moment arm
+            double wing_offset = (actuator_idx == 1) ? -wing_length / 2 : wing_length / 2;
+            auto moment_arm = matrix::Vector3f(0.0f, wing_offset, 0.0f);
+            torque = moment_arm.cross(matrix::Vector3f(force[0], force[1], force[2]));
+
+            break;
+        }
+
+    case 3: { // Tail pitch angle
+            // Map serv_ctrl_val to the appropriate tail pitch angle range
+            tail_pitch_angle = mapRange(serv_ctrl_val, -1.0, 1.0, MIN_TAIL_PITCH_ANGLE, MAX_TAIL_PITCH_ANGLE);
+
+            // Compute the direction vector based on the tail pitch angle
+            auto direction = getDirectionVector(tail_pitch_angle, tail_twist_angle);
+            auto velocity = SimpleArray<double, 3> {vel_body.vx, vel_body.vy, vel_body.vz};
+
+            // Compute the aerodynamic force based on this configuration
+            auto force = flatPlateForce(direction, velocity, tail_area, tail_pitch_angle);
+            thrust = {static_cast<float>(force[0]), static_cast<float>(force[1]), static_cast<float>(force[2])};
+
+            // Compute the torque using the force and the tail length as the moment arm
+            auto moment_arm = matrix::Vector3f(-(BODY_LENGTH + TAIL_LENGTH) / 2, 0.0f, 0.0f);
+            torque = moment_arm.cross(matrix::Vector3f(force[0], force[1], force[2]));
+
+            break;
+        }
+
+    case 4: { // Tail twist angle
+            // Map serv_ctrl_val to the appropriate tail twist angle range
+            tail_twist_angle = mapRange(serv_ctrl_val, -1.0, 1.0, MIN_TAIL_TWIST_ANGLE, MAX_TAIL_TWIST_ANGLE);
+
+            // Compute the direction vector based on the twist angle
+            auto direction = getDirectionVector(vel_body.angle_of_attack, tail_twist_angle);
+            auto velocity = SimpleArray<double, 3> {vel_body.vx, vel_body.vy, vel_body.vz};
+
+            // Compute the aerodynamic force based on this configuration
+            auto force = flatPlateForce(direction, velocity, tail_area, vel_body.angle_of_attack);
+            thrust = {static_cast<float>(force[0]), static_cast<float>(force[1]), static_cast<float>(force[2])};
+
+            // Compute the torque using the force and the tail length as the moment arm
+            auto moment_arm = matrix::Vector3f(-(BODY_LENGTH + TAIL_LENGTH) / 2, 0.0f, 0.0f);
+            torque = moment_arm.cross(matrix::Vector3f(force[0], force[1], force[2]));
+
+            break;
+        }
+
+    case 5: { // Tail area
+            // Map serv_ctrl_val to the appropriate tail expansion angle range (e.g., -60 to 60 degrees)
+            double tail_expansion_angle = mapRange(serv_ctrl_val, -1.0, 1.0, MIN_TAIL_EXPANSION_ANGLE, MAX_TAIL_EXPANSION_ANGLE);
+
+            // Compute the effective tail area based on the expansion angle as a sector area
+            tail_area = (abs(tail_expansion_angle) / 360.0) * M_PI * TAIL_LENGTH * (TAIL_INITIAL_WIDTH / 2.0);
+
+            // Use last_tail_area in computations
+            auto direction = getDirectionVector(vel_body.angle_of_attack, tail_twist_angle);
+            auto velocity = SimpleArray<double, 3> {vel_body.vx, vel_body.vy, vel_body.vz};
+
+            // Compute the aerodynamic force based on this configuration
+            auto force = flatPlateForce(direction, velocity, tail_area, vel_body.angle_of_attack);
+            thrust = {static_cast<float>(force[0]), static_cast<float>(force[1]), static_cast<float>(force[2])};
+
+            // Compute the torque using the force and the tail length as the moment arm
+            auto moment_arm = matrix::Vector3f(-(BODY_LENGTH + TAIL_LENGTH) / 2, 0.0f, 0.0f);
+            torque = moment_arm.cross(matrix::Vector3f(force[0], force[1], force[2]));
+
+            break;
+        }
+
+    default:
+        PX4_ERR("Invalid actuator index");
+        return -1;
+    }
+
+    PX4_INFO("Torques : Roll =%f, Pitch=%f, Yaw=%f", static_cast<double>(torque(0)), static_cast<double>(torque(1)), static_cast<double>(torque(2)));
+    PX4_INFO("Thrust : X =%f, Y=%f, Z=%f", static_cast<double>(thrust(0)), static_cast<double>(thrust(1)), static_cast<double>(thrust(2)));
 
     effectiveness_matrices[selected_matrix](ControlAllocation::ControlAxis::ROLL, actuator_idx) = torque(0);
     effectiveness_matrices[selected_matrix](ControlAllocation::ControlAxis::PITCH, actuator_idx) = torque(1);
@@ -140,3 +230,139 @@ void ActuatorEffectiveness::stopMaskedMotorsWithZeroThrust(uint32_t stoppable_mo
 	}
 }
 
+
+/*Helper functions*/
+double ActuatorEffectiveness::Configuration::mapRange(double value, double input_min, double input_max,double output_min, double output_max)
+{
+	// Define a small epsilon value for floating-point comparison
+	constexpr double epsilon = 1e-6;
+
+	// Check if the input range is effectively zero
+	if (fabs(input_max - input_min) < epsilon) {
+		PX4_ERR("Invalid input range");
+		return output_min; // Return output_min as a fallback
+	}
+
+	// Linearly map the value from the input range to the output range
+	double scaled_value = (value - input_min) / (input_max - input_min);
+	return output_min + scaled_value * (output_max - output_min);
+}
+
+
+SimpleArray<double, 3> ActuatorEffectiveness::Configuration::flatPlateForce(const SimpleArray<double, 3> &lift_dir,
+		const SimpleArray<double, 3> &velocity,
+		double surface_area, double alpha)
+{
+	// Define a small epsilon value for floating-point comparison
+	constexpr double epsilon = 1e-6;
+
+	if (fabs(surface_area) < epsilon || norm(velocity) < epsilon) {
+		return {0, 0, 0};
+	}
+
+	// Normalize the velocity and compute lift and drag directions
+	auto vel_norm = normalize(velocity);
+
+	// Compute dynamic pressure
+	double dynamic_pressure = 0.5 * AIR_DENSITY * std::pow(norm(velocity), 2);
+	double cl = liftCoefficient(toRadians(alpha));
+	double cd = dragCoefficient(toRadians(alpha));
+
+	// Compute lift and drag forces
+	auto lift_force = multiply(lift_dir, dynamic_pressure * surface_area * cl);
+	auto drag_force = multiply(vel_norm, dynamic_pressure * surface_area * cd);
+
+	// Return the total force (lift + drag)
+	return add(lift_force, drag_force);
+}
+
+double ActuatorEffectiveness::Configuration::liftCoefficient(double alpha)
+{
+	double cl_baseline = 0.1;
+	return cl_baseline + 2 * std::sin(alpha) * std::cos(alpha);
+}
+
+double ActuatorEffectiveness::Configuration::dragCoefficient(double alpha)
+{
+	double cd_baseline = 0.02;
+	return cd_baseline + 2 * std::pow(std::sin(alpha), 2);
+}
+
+double ActuatorEffectiveness::Configuration::toRadians(double degrees)
+{
+	return degrees * M_PI / 180.0;
+}
+
+double ActuatorEffectiveness::Configuration::norm(const SimpleArray<double, 3> &vec)
+{
+	return std::sqrt(vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2]);
+}
+
+SimpleArray<double, 3> ActuatorEffectiveness::Configuration::crossProduct(const SimpleArray<double, 3> &vec1,
+		const SimpleArray<double, 3> &vec2)
+{
+	return {
+		vec1[1] *vec2[2] - vec1[2] *vec2[1],
+		vec1[2] *vec2[0] - vec1[0] *vec2[2],
+		vec1[0] *vec2[1] - vec1[1] *vec2[0]
+	};
+}
+
+SimpleArray<double, 3> ActuatorEffectiveness::Configuration::add(const SimpleArray<double, 3> &vec1,
+		const SimpleArray<double, 3> &vec2)
+{
+	return {vec1[0] + vec2[0], vec1[1] + vec2[1], vec1[2] + vec2[2]};
+}
+
+SimpleArray<double, 3> ActuatorEffectiveness::Configuration::subtract(const SimpleArray<double, 3> &vec1,
+		const SimpleArray<double, 3> &vec2)
+{
+	return {vec1[0] - vec2[0], vec1[1] - vec2[1], vec1[2] - vec2[2]};
+}
+
+SimpleArray<double, 3> ActuatorEffectiveness::Configuration::multiply(const SimpleArray<double, 3> &vec, double scalar)
+{
+	return {vec[0] *scalar, vec[1] *scalar, vec[2] *scalar};
+}
+
+SimpleArray<double, 3> ActuatorEffectiveness::Configuration::normalize(const SimpleArray<double, 3> &vec)
+{
+	double vec_norm = norm(vec);
+	constexpr double epsilon = 1e-9; // Small threshold value to avoid floating-point comparison
+
+	if (std::fabs(vec_norm) < epsilon) {
+		return {0.0, 0.0, 0.0};
+	}
+
+	return {vec[0] / vec_norm, vec[1] / vec_norm, vec[2] / vec_norm};
+}
+
+
+SimpleArray<double, 3> ActuatorEffectiveness::Configuration::getDirectionVector(double angle_of_attack,
+		double twist_angle)
+{
+	// Convert angles to radians
+	double aoa_rad = toRadians(angle_of_attack);
+	double twist_rad = toRadians(twist_angle);
+
+	// Initial direction vector based on the angle of attack
+	SimpleArray<double, 3> direction_vector = {std::sin(aoa_rad), 0, -std::cos(aoa_rad)};
+
+	// Apply rotation for the twist angle (rotation about the x-axis)
+	SimpleArray<SimpleArray<double, 3>, 3> twist_rotation = {{
+			{1, 0, 0},
+			{0, std::cos(twist_rad), -std::sin(twist_rad)},
+			{0, std::sin(twist_rad), std::cos(twist_rad)}
+		}
+	};
+
+	// Apply the twist rotation matrix
+	for (int i = 0; i < 3; ++i) {
+		direction_vector[i] = twist_rotation[i][0] * direction_vector[0] +
+				      twist_rotation[i][1] * direction_vector[1] +
+				      twist_rotation[i][2] * direction_vector[2];
+	}
+
+	// Normalize and return the direction vector
+	return normalize(direction_vector);
+}
