@@ -55,36 +55,11 @@ public:
 			    ActuatorVector &actuator_sp, const matrix::Vector<float, NUM_ACTUATORS> &actuator_min,
 			    const matrix::Vector<float, NUM_ACTUATORS> &actuator_max) override;
 
-	double mapRange(double value, double input_min, double input_max, double output_min, double output_max);
-
-	SimpleArray<double, 3> getDirectionVector(double angle_of_attack, double twist_angle);
-
-	SimpleArray<double, 3> flatPlateForce(const SimpleArray<double, 3>& direction, const SimpleArray<double, 3>& velocity,
-									double surface_area, double alpha);
-
-	double liftCoefficient(double alpha);
-
-	double dragCoefficient(double alpha);
-
-	double toRadians(double degrees);
-
-	double norm(const SimpleArray<double, 3>& vec);
-
 	double computePitchAnge();
-
-	SimpleArray<double, 3> normalize(const SimpleArray<double, 3>& vec);
-
-	SimpleArray<double, 3> crossProduct(const SimpleArray<double, 3>& vec1, const SimpleArray<double, 3>& vec2);
-
-	SimpleArray<double, 3> add(const SimpleArray<double, 3>& vec1, const SimpleArray<double, 3>& vec2);
-
-	SimpleArray<double, 3> subtract(const SimpleArray<double, 3>& vec1, const SimpleArray<double, 3>& vec2);
-
-	SimpleArray<double, 3> multiply(const SimpleArray<double, 3>& vec, double scalar);
 
 	ServoControl getServoControlData();
 
-	BodyFrameVelocities extractBodyFrameVelocities(double pitch);
+	BodyFrameVelocities extractBodyFrameVelocities();
 
 private:
 	ActuatorEffectivenessRotors _rotors;
