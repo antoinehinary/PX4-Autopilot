@@ -36,6 +36,8 @@
 
 #include <px4_platform_common/log.h>
 
+constexpr double EPSILON = 1e-6;
+
 int ActuatorEffectiveness::Configuration::addActuator(ActuatorType type, const matrix::Vector3f &torque,
 		const matrix::Vector3f &thrust)
 {
@@ -65,18 +67,9 @@ int ActuatorEffectiveness::Configuration::addActuator(ActuatorType type, const m
 int ActuatorEffectiveness::Configuration::addActuatoravian(ActuatorType type, matrix::Vector3f &torque,
 	matrix::Vector3f &thrust,BodyFrameVelocities &vel_body, ServoControl &serv_ctrl)
 {
-    // Dummy usage of vel_body and serv_ctrl to suppress warnings
-//     double dummy_vx = vel_body.vx + vel_body.vy + vel_body.vz;
-//     bool dummy_valid = vel_body.valid;
-//     float dummy_control = serv_ctrl.control[0];
-//     // PX4_INFO("Dummy usage: control=%f", static_cast<double>(dummy_control));
-//     PX4_INFO("Dummy usage: vx=%f, valid=%d, control=%f", dummy_vx, dummy_valid, static_cast<double>(dummy_control));
 
     int actuator_idx = num_actuators_matrix[selected_matrix];
     double serv_ctrl_val = serv_ctrl.control[actuator_idx];
-
-    // Dummy usage of serv_ctrl_val to suppress warning
-//     PX4_INFO("Dummy serv_ctrl_val: %f", serv_ctrl_val);
 
     if (actuator_idx >= NUM_ACTUATORS) {
         PX4_ERR("Too many actuators");
@@ -154,9 +147,6 @@ int ActuatorEffectiveness::Configuration::addActuatoravian(ActuatorType type, ma
         PX4_ERR("Invalid actuator index");
         return -1;
     }
-
-//     PX4_INFO("Torques : Roll =%f, Pitch=%f, Yaw=%f", static_cast<double>(torque(0)), static_cast<double>(torque(1)), static_cast<double>(torque(2)));
-//     PX4_INFO("Thrust : X =%f, Y=%f, Z=%f", static_cast<double>(thrust(0)), static_cast<double>(thrust(1)), static_cast<double>(thrust(2)));
 
     effectiveness_matrices[selected_matrix](ControlAllocation::ControlAxis::ROLL, actuator_idx) = torque(0);
     effectiveness_matrices[selected_matrix](ControlAllocation::ControlAxis::PITCH, actuator_idx) = torque(1);

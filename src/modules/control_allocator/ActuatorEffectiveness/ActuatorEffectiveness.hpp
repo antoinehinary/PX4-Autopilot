@@ -41,7 +41,8 @@
 
 #pragma once
 
-#include <cstdint>
+// #include <cstdint>
+#include <cmath>
 
 #include <uORB/Subscription.hpp>
 #include <matrix/matrix/math.hpp>
@@ -49,7 +50,6 @@
 #include <uORB/topics/actuator_servos.h>
 #include <uORB/topics/vehicle_attitude.h>
 #include <uORB/topics/control_allocator_status.h>
-#include <uORB/topics/vehicle_angular_velocity.h>
 
 // include for air speed
 #include </home/antoine/PX4-Autopilot/src/modules/airspeed_selector/AirspeedValidator.hpp>

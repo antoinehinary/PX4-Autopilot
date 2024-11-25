@@ -55,29 +55,28 @@ public:
 			    ActuatorVector &actuator_sp, const matrix::Vector<float, NUM_ACTUATORS> &actuator_min,
 			    const matrix::Vector<float, NUM_ACTUATORS> &actuator_max) override;
 
-	double computePitchAnge();
+	void computePitchAnge();
 
 	ServoControl getServoControlData();
 
-	BodyFrameVelocities extractBodyFrameVelocities();
+	void extractBodyFrameVelocities();
+
 
 private:
 	ActuatorEffectivenessRotors _rotors;
 	ActuatorEffectivenessControlSurfaces _control_surfaces;
+	BodyFrameVelocities vel_body;
 
 	uORB::Subscription _flaps_setpoint_sub{ORB_ID(flaps_setpoint)};
 	uORB::Subscription _spoilers_setpoint_sub{ORB_ID(spoilers_setpoint)};
 	uORB::Subscription _sensor_accel_sub{ORB_ID(sensor_accel)};
 	uORB::Subscription _actuator_servos_sub{ORB_ID(actuator_servos)};
-	uORB::Subscription _vehicle_attitude_sub{ORB_ID(vehicle_attitude)};
-	uORB::Subscription _vehicle_angular_velocity_sub{ORB_ID(vehicle_angular_velocity)};
-
+	uORB::Subscription _vehicle_attitude_sub{ORB_ID(estimator_attitude)};
 
 	// variables for speed computations
 	double last_vel_x = 0;
 	double last_vel_y = 0;
 	double last_vel_z = 0;
-	double pitch = 0;
 
 	int _first_control_surface_idx{0}; ///< applies to matrix 1
 
