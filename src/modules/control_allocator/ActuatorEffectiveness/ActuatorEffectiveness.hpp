@@ -142,13 +142,13 @@ struct ServoControl
 };
 
 struct BodyFrameVelocities {
-	double vx; // in m/s
-	double vz; // in m/s
-	double vy; // in m/s
-	double pitch_angle; // in degrees
-	double pitch_angle_rad; // in radians
-	double angle_of_attack; // in degrees
-	bool valid;
+	double vx = 0; // in m/s
+	double vz = 0; // in m/s
+	double vy = 0; // in m/s
+	double pitch_angle = 0; // in degrees
+	double pitch_angle_rad = 0; // in radians
+	double angle_of_attack = 0; // in degrees
+	bool valid = false;
 };
 
 class ActuatorEffectiveness

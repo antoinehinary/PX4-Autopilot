@@ -34,6 +34,10 @@
 #include "ActuatorEffectivenessAvianInspired.hpp"
 #include <ControlAllocation/ControlAllocation.hpp>
 
+#include <uORB/Subscription.hpp>
+#include <uORB/topics/vehicle_attitude.h>
+
+
 using namespace matrix;
 
 ActuatorEffectivenessAvianInspired::ActuatorEffectivenessAvianInspired(ModuleParams *parent)
@@ -47,9 +51,16 @@ ActuatorEffectivenessAvianInspired::getEffectivenessMatrix(Configuration &config
 		EffectivenessUpdateReason external_update)
 {
 	ModuleParams::updateParams();
-	vehicle_attitude_s vehicle_attitude;
 
-	if (_vehicle_attitude_sub.update(&vehicle_attitude)) {
+	// int attitude_updated = _vehicle_attitude_sub.updated();
+
+	// if (!attitude_updated) {
+	// 	PX4_ERR("Failed to update to vehicle_attitude");
+	// } else {
+	// 	PX4_INFO("Successfully updated vehicle_attitude");
+	// }
+
+	if (_vehicle_attitude_sub.update(&vehicle_attitude)){
 		matrix::Eulerf attitude = matrix::Quatf(vehicle_attitude.q);
 		vel_body.pitch_angle = math::degrees(attitude(1)); // Convert pitch to degrees
 		vel_body.pitch_angle_rad = attitude(1);            // Store pitch in radians
@@ -61,7 +72,20 @@ ActuatorEffectivenessAvianInspired::getEffectivenessMatrix(Configuration &config
 		vel_body.pitch_angle_rad = vel_body.pitch_angle_rad;
 	}
 
+
+	// PX4_INFO("Computed Pitch (degrees): %f, %f, %f, %f", static_cast<double>(vehicle_attitude.q[0]), static_cast<double>(vehicle_attitude.q[1]), static_cast<double>(vehicle_attitude.q[2]), static_cast<double>(vehicle_attitude.q[3]));
+
+
+	// MavlinkStreamAttitudeQuaternion
+	// vel_body.pitch_angle_rad = _att_quat.pitchl;
+
+	// attitude_estimator_q_main
+	// vel_body.pitch_angle_rad = estimator.get_pitch_avian();
+
 	extractBodyFrameVelocities();
+
+    	// PX4_INFO("PITCH BLACK IS : %f", vel_body.pitch_angle_rad);
+
 	// computePitchAnge();
     	ServoControl serv_ctrl = getServoControlData();
 
@@ -110,44 +134,11 @@ void ActuatorEffectivenessAvianInspired::allocateAuxilaryControls(const float dt
 
 
 /*Helper Functions*/
-void ActuatorEffectivenessAvianInspired::computePitchAnge()
-{
-    vehicle_attitude_s vehicle_attitude;
-	static uint64_t last_call = 0;
-	uint64_t now = hrt_absolute_time();
-	PX4_INFO("computePitchAnge called, dt: %llu us", now - last_call);
-	last_call = now;
-
-    // Check for updated attitude data
-    if (_vehicle_attitude_sub.update(&vehicle_attitude)) {
-        matrix::Eulerf attitude = matrix::Quatf(vehicle_attitude.q);
-
-        // Debugging outputs
-        PX4_INFO("Euler Angles: Roll=%f, Pitch=%f, Yaw=%f",
-                 static_cast<double>(attitude(0)), // Roll
-                 static_cast<double>(attitude(1)), // Pitch
-                 static_cast<double>(attitude(2))); // Yaw
-
-        vel_body.pitch_angle = math::degrees(attitude(1)); // Convert pitch to degrees
-        vel_body.pitch_angle_rad = attitude(1);            // Store pitch in radians
-
-        PX4_INFO("Computed Pitch (degrees): %f", vel_body.pitch_angle);
-    } else {
-        PX4_WARN("Vehicle attitude not updated");
-        vel_body.pitch_angle = vel_body.pitch_angle; // Keep at value
-        vel_body.pitch_angle_rad = vel_body.pitch_angle_rad;
-    }
-}
-
-
 void ActuatorEffectivenessAvianInspired::extractBodyFrameVelocities()
 {
     AirspeedValidator air_speed;
 
     // Initialize result velocities and validity
-    vel_body.vx = last_vel_x;
-    vel_body.vy = last_vel_y;
-    vel_body.vz = last_vel_z;
     vel_body.valid = false;
 
     // Retrieve linear acceleration
@@ -156,6 +147,11 @@ void ActuatorEffectivenessAvianInspired::extractBodyFrameVelocities()
         PX4_ERR("Failed to update linear acceleration data");
     }
 
+//     pitch_black = air_speed.get_pitch_filtered();
+
+//     int did_it = _sensor_accel_sub.updated();
+//     PX4_INFO("DID I SUBSCRIBE : %d", did_it);
+
     // Update velocities directly
     vel_body.vx += static_cast<double>(accel_data.x) * static_cast<double>(DT);
     vel_body.vy += static_cast<double>(accel_data.y) * static_cast<double>(DT);
@@ -163,23 +159,20 @@ void ActuatorEffectivenessAvianInspired::extractBodyFrameVelocities()
 
     // Apply wind adjustment using pitch
     double wind_adjustment = air_speed.get_aspd_wind_value();
+    vel_body.pitch_angle_rad = math::radians(5);
     vel_body.vx += static_cast<double>(cos(vel_body.pitch_angle_rad)) * wind_adjustment;
     vel_body.vz += static_cast<double>(sin(vel_body.pitch_angle_rad)) * wind_adjustment;
 
     // Calculate AoA (only if forward velocity is positive)
-    if (vel_body.vx >= 0) {
+    if (abs(vel_body.vx) > 0) {
+        // vel_body.angle_of_attack = vel_body.pitch_angle_rad; // Convert to degrees
         vel_body.angle_of_attack = atan2(vel_body.vz, vel_body.vx) * (180.0 / M_PI); // Convert to degrees
     } else {
-        vel_body.angle_of_attack = 0; // Null AoA if forward velocity is zero
+        vel_body.angle_of_attack = 0.9559; // Null AoA if forward velocity is zero
     }
 
     // Mark as valid
     vel_body.valid = true;
-
-    // Save updated velocities for next iteration
-    last_vel_x = vel_body.vx;
-    last_vel_y = vel_body.vy;
-    last_vel_z = vel_body.vz;
 }
 
 

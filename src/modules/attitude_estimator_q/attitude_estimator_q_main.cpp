@@ -88,6 +88,9 @@ public:
 
 	bool init();
 
+	// added function
+	double get_pitch_avian() { return _pitch_avian;};
+
 private:
 
 	void Run() override;
@@ -152,6 +155,9 @@ private:
 
 	float       _bias_max{};
 	float       _mag_decl{};
+
+	// added variable
+	double 	    _pitch_avian;
 
 	bool        _data_good{false};
 	bool        _ext_hdg_good{false};
@@ -322,10 +328,13 @@ void AttitudeEstimatorQ::update_vehicle_attitude()
 		vehicle_attitude_s vehicle_attitude{};
 		vehicle_attitude.timestamp_sample = _imu_timestamp;
 		_q.copyTo(vehicle_attitude.q);
+		matrix::Eulerf attitude = matrix::Quatf(vehicle_attitude.q);
+		_pitch_avian = math::degrees(attitude(1));
 
 		/* the instance count is not used here */
 		vehicle_attitude.timestamp = hrt_absolute_time();
 		_vehicle_attitude_pub.publish(vehicle_attitude);
+
 	}
 }
 

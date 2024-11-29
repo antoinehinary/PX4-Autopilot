@@ -74,6 +74,9 @@ private:
 
 			mavlink_attitude_quaternion_t msg{};
 
+			// pitch = matrix::Eulerf attitude = matrix::Quatf(att.q);
+			// PX4_INFO("PITCH IN ATT_QUAT : %f", pitch);
+
 			msg.time_boot_ms = att.timestamp / 1000;
 			msg.q1 = att.q[0];
 			msg.q2 = att.q[1];

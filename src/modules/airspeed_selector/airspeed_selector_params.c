@@ -8,7 +8,7 @@
  * @unit m/s
  * @group Airspeed Validator
  */
-PARAM_DEFINE_INT32(ASPD_WIND, 2);
+PARAM_DEFINE_INT32(ASPD_WIND, 8);
 
 /**
  * Wind estimator wind process noise spectral density

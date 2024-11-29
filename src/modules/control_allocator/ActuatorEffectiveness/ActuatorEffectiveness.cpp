@@ -85,6 +85,7 @@ int ActuatorEffectiveness::Configuration::addActuatoravian(ActuatorType type, ma
     case 1: // Left wing area
     case 2: { // Right wing area
             // Map serv_ctrl_val from [-1, 1] to a wing area range
+	//     serv_ctrl_val = (actuator_idx == 1) ? -0.5 : 0.5;
             wing_length = mapRange(serv_ctrl_val, -1.0, 1.0, MIN_WING_LENGTH, MAX_WING_LENGTH);
             wing_area = wing_length * WING_WIDTH;
             // Compute the direction vector assuming no dihedral and twist
@@ -97,10 +98,13 @@ int ActuatorEffectiveness::Configuration::addActuatoravian(ActuatorType type, ma
             double wing_offset = (actuator_idx == 1) ? -wing_length / 2 : wing_length / 2;
             auto moment_arm = matrix::Vector3f(0.0f, wing_offset, 0.0f);
             torque = moment_arm.cross(matrix::Vector3f(force[0], force[1], force[2]));
+	//     thrust = matrix::Vector3f(serv_ctrl_val, serv_ctrl_val, serv_ctrl_val);
+	//     torque = matrix::Vector3f(serv_ctrl_val, serv_ctrl_val, serv_ctrl_val);
             break;
         }
     case 3: { // Tail pitch angle
             // Map serv_ctrl_val to the appropriate tail pitch angle range
+	//     serv_ctrl_val = 0.6;
             tail_pitch_angle = mapRange(serv_ctrl_val, -1.0, 1.0, MIN_TAIL_PITCH_ANGLE, MAX_TAIL_PITCH_ANGLE);
             // Compute the direction vector based on the tail pitch angle
             auto direction = getDirectionVector(tail_pitch_angle, tail_twist_angle);
@@ -111,10 +115,13 @@ int ActuatorEffectiveness::Configuration::addActuatoravian(ActuatorType type, ma
             // Compute the torque using the force and the tail length as the moment arm
             auto moment_arm = matrix::Vector3f(-(BODY_LENGTH + TAIL_LENGTH) / 2, 0.0f, 0.0f);
             torque = moment_arm.cross(matrix::Vector3f(force[0], force[1], force[2]));
+	//     thrust = matrix::Vector3f(serv_ctrl_val, serv_ctrl_val, serv_ctrl_val);
+	//     torque = matrix::Vector3f(serv_ctrl_val, serv_ctrl_val, serv_ctrl_val);
             break;
         }
     case 4: { // Tail twist angle
             // Map serv_ctrl_val to the appropriate tail twist angle range
+	//     serv_ctrl_val = -0.3;
             tail_twist_angle = mapRange(serv_ctrl_val, -1.0, 1.0, MIN_TAIL_TWIST_ANGLE, MAX_TAIL_TWIST_ANGLE);
             // Compute the direction vector based on the twist angle
             auto direction = getDirectionVector(vel_body.angle_of_attack, tail_twist_angle);
@@ -125,10 +132,13 @@ int ActuatorEffectiveness::Configuration::addActuatoravian(ActuatorType type, ma
             // Compute the torque using the force and the tail length as the moment arm
             auto moment_arm = matrix::Vector3f(-(BODY_LENGTH + TAIL_LENGTH) / 2, 0.0f, 0.0f);
             torque = moment_arm.cross(matrix::Vector3f(force[0], force[1], force[2]));
+	//     thrust = matrix::Vector3f(serv_ctrl_val, serv_ctrl_val, serv_ctrl_val);
+	//     torque = matrix::Vector3f(serv_ctrl_val, serv_ctrl_val, serv_ctrl_val);
             break;
         }
     case 5: { // Tail area
             // Map serv_ctrl_val to the appropriate tail expansion angle range (e.g., -60 to 60 degrees)
+	//     serv_ctrl_val = 0.5;
             double tail_expansion_angle = mapRange(serv_ctrl_val, -1.0, 1.0, MIN_TAIL_EXPANSION_ANGLE, MAX_TAIL_EXPANSION_ANGLE);
             // Compute the effective tail area based on the expansion angle as a sector area
             tail_area = (abs(tail_expansion_angle) / 360.0) * M_PI * TAIL_LENGTH * (TAIL_INITIAL_WIDTH / 2.0);
@@ -141,12 +151,21 @@ int ActuatorEffectiveness::Configuration::addActuatoravian(ActuatorType type, ma
             // Compute the torque using the force and the tail length as the moment arm
             auto moment_arm = matrix::Vector3f(-(BODY_LENGTH + TAIL_LENGTH) / 2, 0.0f, 0.0f);
             torque = moment_arm.cross(matrix::Vector3f(force[0], force[1], force[2]));
+	//     thrust = matrix::Vector3f(serv_ctrl_val, serv_ctrl_val, serv_ctrl_val);
+	//     torque = matrix::Vector3f(serv_ctrl_val, serv_ctrl_val, serv_ctrl_val);
             break;
         }
     default:
         PX4_ERR("Invalid actuator index");
         return -1;
     }
+
+//     effectiveness_matrices[selected_matrix](ControlAllocation::ControlAxis::ROLL, actuator_idx) = 0.1;
+//     effectiveness_matrices[selected_matrix](ControlAllocation::ControlAxis::PITCH, actuator_idx) = 0.4;
+//     effectiveness_matrices[selected_matrix](ControlAllocation::ControlAxis::YAW, actuator_idx) = 0.5;
+//     effectiveness_matrices[selected_matrix](ControlAllocation::ControlAxis::THRUST_X, actuator_idx) = 0.1;
+//     effectiveness_matrices[selected_matrix](ControlAllocation::ControlAxis::THRUST_Y, actuator_idx) = 0.4;
+//     effectiveness_matrices[selected_matrix](ControlAllocation::ControlAxis::THRUST_Z, actuator_idx) = 0.5;
 
     effectiveness_matrices[selected_matrix](ControlAllocation::ControlAxis::ROLL, actuator_idx) = torque(0);
     effectiveness_matrices[selected_matrix](ControlAllocation::ControlAxis::PITCH, actuator_idx) = torque(1);
