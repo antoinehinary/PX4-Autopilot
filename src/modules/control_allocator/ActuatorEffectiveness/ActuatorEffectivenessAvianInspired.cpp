@@ -47,11 +47,9 @@ ActuatorEffectivenessAvianInspired::ActuatorEffectivenessAvianInspired(ModulePar
 }
 
 bool
-ActuatorEffectivenessAvianInspired::getEffectivenessMatrix(Configuration &configuration,
-		EffectivenessUpdateReason external_update)
+ActuatorEffectivenessAvianInspired::getEffectivenessMatrixAvian(Configuration &configuration,
+		EffectivenessUpdateReason external_update, float pitch_angle)
 {
-	ModuleParams::updateParams();
-
 	// int attitude_updated = _vehicle_attitude_sub.updated();
 
 	// if (!attitude_updated) {
@@ -60,21 +58,19 @@ ActuatorEffectivenessAvianInspired::getEffectivenessMatrix(Configuration &config
 	// 	PX4_INFO("Successfully updated vehicle_attitude");
 	// }
 
-	if (_vehicle_attitude_sub.update(&vehicle_attitude)){
-		matrix::Eulerf attitude = matrix::Quatf(vehicle_attitude.q);
-		vel_body.pitch_angle = math::degrees(attitude(1)); // Convert pitch to degrees
-		vel_body.pitch_angle_rad = attitude(1);            // Store pitch in radians
+	// if (_vehicle_attitude_sub.update(&vehicle_attitude)){
+	// 	matrix::Eulerf attitude = matrix::Quatf(vehicle_attitude.q);
+	// 	vel_body.pitch_angle = math::degrees(attitude(1)); // Convert pitch to degrees
+	// 	vel_body.pitch_angle_rad = attitude(1);            // Store pitch in radians
 
-		PX4_INFO("Computed Pitch (degrees): %f", vel_body.pitch_angle);
-	} else {
-		PX4_WARN("Vehicle attitude not updated");
-		vel_body.pitch_angle = vel_body.pitch_angle; // Keep at value
-		vel_body.pitch_angle_rad = vel_body.pitch_angle_rad;
-	}
+	// 	PX4_INFO("Computed Pitch (degrees): %f", vel_body.pitch_angle);
+	// } else {
+	// 	PX4_WARN("Vehicle attitude not updated");
+	// 	vel_body.pitch_angle = vel_body.pitch_angle; // Keep at value
+	// 	vel_body.pitch_angle_rad = vel_body.pitch_angle_rad;
+	// }
 
-
-	// PX4_INFO("Computed Pitch (degrees): %f, %f, %f, %f", static_cast<double>(vehicle_attitude.q[0]), static_cast<double>(vehicle_attitude.q[1]), static_cast<double>(vehicle_attitude.q[2]), static_cast<double>(vehicle_attitude.q[3]));
-
+	// PX4_INFO("Passed Pitch (degrees): %f", static_cast<double>(pitch_angle));
 
 	// MavlinkStreamAttitudeQuaternion
 	// vel_body.pitch_angle_rad = _att_quat.pitchl;
@@ -82,6 +78,9 @@ ActuatorEffectivenessAvianInspired::getEffectivenessMatrix(Configuration &config
 	// attitude_estimator_q_main
 	// vel_body.pitch_angle_rad = estimator.get_pitch_avian();
 
+	// Manually fixing the pitch to 10 degrees
+	vel_body.pitch_angle = 10;
+	vel_body.pitch_angle_rad = math::radians(10);
 	extractBodyFrameVelocities();
 
     	// PX4_INFO("PITCH BLACK IS : %f", vel_body.pitch_angle_rad);
@@ -159,7 +158,8 @@ void ActuatorEffectivenessAvianInspired::extractBodyFrameVelocities()
 
     // Apply wind adjustment using pitch
     double wind_adjustment = air_speed.get_aspd_wind_value();
-    vel_body.pitch_angle_rad = math::radians(5);
+    vel_body.pitch_angle = 10;	// manually fixing the angle to 10 degrees
+    vel_body.pitch_angle_rad = math::radians(10);	// manually fixing the angle to radians(10 degrees)
     vel_body.vx += static_cast<double>(cos(vel_body.pitch_angle_rad)) * wind_adjustment;
     vel_body.vz += static_cast<double>(sin(vel_body.pitch_angle_rad)) * wind_adjustment;
 

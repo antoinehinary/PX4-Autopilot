@@ -310,6 +310,18 @@ ControlAllocator::Run()
 		return;
 	}
 
+	// vehicle_attitude_s vehicle_attitude;
+
+	// // px4_usleep(10000);
+	// if (_vehicle_attitude_sub.copy(&vehicle_attitude)){
+	// 	matrix::Eulerf attitude = matrix::Quatf(vehicle_attitude.q);
+	// 	_pitch_avian = math::degrees(attitude(1)); // Convert pitch to degrees
+	// 	// PX4_INFO("ALLOCATOR COMPUTED call Computed Pitch (degrees): %f", static_cast<double>(_pitch_avian));
+	// 	// px4_usleep(4600);
+	// } else {
+	// 	PX4_INFO("Pitch Aquisition Failed");
+	// }
+
 	perf_begin(_loop_perf);
 
 #ifndef ENABLE_LOCKSTEP_SCHEDULER // Backup schedule would interfere with lockstep
@@ -479,7 +491,7 @@ ControlAllocator::update_effectiveness_matrix_if_needed(EffectivenessUpdateReaso
 		return;
 	}
 
-	if (_actuator_effectiveness->getEffectivenessMatrix(config, reason)) {
+	if (_actuator_effectiveness->getEffectivenessMatrixAvian(config, reason, _pitch_avian)) {
 		_last_effectiveness_update = hrt_absolute_time();
 
 		memcpy(_control_allocation_selection_indexes, config.matrix_selection_indexes,

@@ -160,6 +160,22 @@ int ActuatorEffectiveness::Configuration::addActuatoravian(ActuatorType type, ma
         return -1;
     }
 
+    // Normalize torque vector
+	float torque_magnitude = sqrtf((torque(0) * torque(0)) + (torque(1) * torque(1)) + (torque(2) * torque(2)));
+	if (torque_magnitude > 0.0f) {
+        torque(0) /= torque_magnitude;
+        torque(1) /= torque_magnitude;
+        torque(2) /= torque_magnitude;
+	}
+
+	// Normalize thrust vector
+	float thrust_magnitude = sqrtf((thrust(0) * thrust(0)) + (thrust(1) * thrust(1)) + (thrust(2) * thrust(2)));
+	if (thrust_magnitude > 0.0f) {
+        thrust(0) /= thrust_magnitude;
+        thrust(1) /= thrust_magnitude;
+        thrust(2) /= thrust_magnitude;
+	}
+
 //     effectiveness_matrices[selected_matrix](ControlAllocation::ControlAxis::ROLL, actuator_idx) = 0.1;
 //     effectiveness_matrices[selected_matrix](ControlAllocation::ControlAxis::PITCH, actuator_idx) = 0.4;
 //     effectiveness_matrices[selected_matrix](ControlAllocation::ControlAxis::YAW, actuator_idx) = 0.5;

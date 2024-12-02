@@ -46,7 +46,7 @@ public:
 	ActuatorEffectivenessAvianInspired(ModuleParams *parent);
 	virtual ~ActuatorEffectivenessAvianInspired() = default;
 
-	bool getEffectivenessMatrix(Configuration &configuration, EffectivenessUpdateReason external_update) override;
+	bool getEffectivenessMatrixAvian(Configuration &configuration, EffectivenessUpdateReason external_update, float pitch_angle) override;
 
 	const char *name() const override { return "Fixed Wing"; }
 
@@ -74,7 +74,7 @@ private:
 	uORB::Subscription _spoilers_setpoint_sub{ORB_ID(spoilers_setpoint)};
 	uORB::Subscription _sensor_accel_sub{ORB_ID(sensor_accel)};
 	uORB::Subscription _actuator_servos_sub{ORB_ID(actuator_servos)};
-	uORB::Subscription _vehicle_attitude_sub{ORB_ID(vehicle_attitude)};
+	// uORB::Subscription _vehicle_attitude_sub{ORB_ID(vehicle_attitude)};
 
 	// MavlinkStreamAttitudeQuaternion _att_quat;
 

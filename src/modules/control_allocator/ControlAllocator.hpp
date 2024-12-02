@@ -219,4 +219,7 @@ private:
 		(ParamInt<px4::params::CA_R_REV>) _param_r_rev
 	)
 
+	uORB::Subscription _vehicle_attitude_sub{ORB_ID(vehicle_attitude)};
+	float _pitch_avian;
+
 };

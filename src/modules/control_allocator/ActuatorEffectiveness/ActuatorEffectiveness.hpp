@@ -281,6 +281,7 @@ public:
 	 * @return true if updated and matrix is set
 	 */
 	virtual bool getEffectivenessMatrix(Configuration &configuration, EffectivenessUpdateReason external_update) { return false;}
+	virtual bool getEffectivenessMatrixAvian(Configuration &configuration, EffectivenessUpdateReason external_update, float pitch_angle) { return false;}
 
 	/**
 	 * Get the current flight phase
