@@ -77,6 +77,8 @@
 #include <uORB/topics/vehicle_torque_setpoint.h>
 #include <uORB/topics/vehicle_thrust_setpoint.h>
 #include <uORB/topics/vehicle_status.h>
+#include <uORB/topics/vehicle_attitude.h>
+#include <uORB/topics/pitch_debug.h>
 #include <uORB/topics/failure_detector_status.h>
 
 class ControlAllocator : public ModuleBase<ControlAllocator>, public ModuleParams, public px4::ScheduledWorkItem
@@ -158,6 +160,7 @@ private:
 		HELICOPTER_TAIL_ESC = 10,
 		HELICOPTER_TAIL_SERVO = 11,
 		HELICOPTER_COAXIAL = 12,
+		AVIAN_INSPIRED = 14,
 	};
 
 	enum class FailureMode {
@@ -217,4 +220,10 @@ private:
 		(ParamInt<px4::params::CA_R_REV>) _param_r_rev
 	)
 
+	// Add a member variable for the publisher in the class definition
+    	uORB::Publication<pitch_debug_s> _pitch_debug_pub{ORB_ID(pitch_debug)};
+	uORB::Subscription _vehicle_attitude_sub{ORB_ID(vehicle_attitude)};
+	uORB::Subscription _pitch_debug_sub{ORB_ID(pitch_debug)};
+	pitch_debug_s pitch_debug_msg{};
+	float _pitch_avian;
 };

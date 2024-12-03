@@ -166,6 +166,7 @@ set(msg_files
 	ParameterSetValueResponse.msg
 	ParameterUpdate.msg
 	Ping.msg
+	PitchDebug.msg
 	PositionControllerLandingStatus.msg
 	PositionControllerStatus.msg
 	PositionSetpoint.msg
