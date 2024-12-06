@@ -44,6 +44,10 @@
 #include <cstdint>
 
 #include <matrix/matrix/math.hpp>
+#include <uORB/Publication.hpp>
+#include <uORB/Subscription.hpp>
+#include <uORB/topics/pitch_debug.h>
+#include <uORB/topics/vehicle_attitude.h>
 #include <uORB/topics/control_allocator_status.h>
 
 enum class AllocationMethod {
@@ -122,6 +126,12 @@ public:
 
 		uint8_t matrix_selection_indexes[NUM_ACTUATORS * MAX_NUM_MATRICES];
 		int num_actuators[(int)ActuatorType::COUNT];
+
+		// Add a member variable for the publisher in the class definition
+		uORB::Publication<pitch_debug_s> _pitch_debug_pub{ORB_ID(pitch_debug)};
+		uORB::Subscription _vehicle_attitude_sub{ORB_ID(vehicle_attitude)};
+		pitch_debug_s pitch_debug_msg{};
+		float _pitch_avian;
 	};
 
 	/**
