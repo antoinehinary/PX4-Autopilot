@@ -46,6 +46,7 @@ public:
 	virtual ~ActuatorEffectivenessFixedWing() = default;
 
 	bool getEffectivenessMatrix(Configuration &configuration, EffectivenessUpdateReason external_update) override;
+	bool getEffectivenessMatrixAvian(Configuration &configuration, EffectivenessUpdateReason external_update, float _pitch_avian) override;
 
 	const char *name() const override { return "Fixed Wing"; }
 

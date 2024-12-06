@@ -82,6 +82,7 @@ public:
 	virtual ~ActuatorEffectivenessControlSurfaces() = default;
 
 	bool addActuators(Configuration &configuration);
+	bool addActuators(Configuration &configuration, float _pitch_avian);
 
 	const char *name() const override { return "Control Surfaces"; }
 

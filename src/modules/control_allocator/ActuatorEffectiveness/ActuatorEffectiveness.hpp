@@ -102,6 +102,7 @@ public:
 		 * Add an actuator to the selected matrix, returning the index, or -1 on error
 		 */
 		int addActuator(ActuatorType type, const matrix::Vector3f &torque, const matrix::Vector3f &thrust);
+		int addActuator(ActuatorType type, const matrix::Vector3f &torque, const matrix::Vector3f &thrust, float _pitch_avian);
 
 		/**
 		 * Call this after manually adding N actuators to the selected matrix
@@ -166,6 +167,7 @@ public:
 	 * @return true if updated and matrix is set
 	 */
 	virtual bool getEffectivenessMatrix(Configuration &configuration, EffectivenessUpdateReason external_update) { return false;}
+	virtual bool getEffectivenessMatrixAvian(Configuration &configuration, EffectivenessUpdateReason external_update, float _pitch_avian) { return false;}
 
 	/**
 	 * Get the current flight phase

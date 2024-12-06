@@ -336,7 +336,7 @@ ControlAllocator::Run()
 		_pitch_avian = math::degrees(attitude(1)); // Convert pitch to degrees
 
 		// Create the message
-		PX4_INFO("Publishing pitch_debug...");
+		// PX4_INFO("Publishing pitch_debug...");
 		pitch_debug_msg.timestamp = hrt_absolute_time();
 		pitch_debug_msg.pitch = _pitch_avian;
 
@@ -492,7 +492,7 @@ ControlAllocator::update_effectiveness_matrix_if_needed(EffectivenessUpdateReaso
 		return;
 	}
 
-	if (_actuator_effectiveness->getEffectivenessMatrix(config, reason)) {
+	if (_actuator_effectiveness->getEffectivenessMatrixAvian(config, reason, _pitch_avian)) {
 		_last_effectiveness_update = hrt_absolute_time();
 
 		memcpy(_control_allocation_selection_indexes, config.matrix_selection_indexes,

@@ -164,6 +164,20 @@ bool ActuatorEffectivenessControlSurfaces::addActuators(Configuration &configura
 	return true;
 }
 
+bool ActuatorEffectivenessControlSurfaces::addActuators(Configuration &configuration, float _pitch_avian)
+{
+	for (int i = 0; i < _count; i++) {
+		// Pitch arrived correctly but not updated
+		int actuator_idx = configuration.addActuator(ActuatorType::SERVOS, _params[i].torque, Vector3f{}, _pitch_avian);
+
+		if (actuator_idx >= 0) {
+			configuration.trim[configuration.selected_matrix](actuator_idx) = _params[i].trim;
+		}
+	}
+
+	return true;
+}
+
 void ActuatorEffectivenessControlSurfaces::applyFlaps(float flaps_control, int first_actuator_idx, float dt,
 		ActuatorVector &actuator_sp)
 {

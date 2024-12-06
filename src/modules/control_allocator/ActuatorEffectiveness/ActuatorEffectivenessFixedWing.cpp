@@ -62,6 +62,31 @@ ActuatorEffectivenessFixedWing::getEffectivenessMatrix(Configuration &configurat
 	return (rotors_added_successfully && surfaces_added_successfully);
 }
 
+bool
+ActuatorEffectivenessFixedWing::getEffectivenessMatrixAvian(Configuration &configuration,
+		EffectivenessUpdateReason external_update, float _pitch_avian)
+{
+	if (external_update == EffectivenessUpdateReason::NO_EXTERNAL_UPDATE) {
+		return false;
+	}
+
+	// Motors
+	_rotors.enablePropellerTorque(false);
+	const bool rotors_added_successfully = _rotors.addActuators(configuration);
+	_forwards_motors_mask = _rotors.getForwardsMotors();
+
+	// Control Surfaces
+	_first_control_surface_idx = configuration.num_actuators_matrix[0];
+	const bool surfaces_added_successfully = _control_surfaces.addActuators(configuration, _pitch_avian);
+
+	// while testing it returned True
+	// in addition pitch passed correctly but not updating
+	// PX4_INFO("BOOL IS : %d", (rotors_added_successfully && surfaces_added_successfully));
+
+	return (rotors_added_successfully && surfaces_added_successfully);
+}
+
+
 void ActuatorEffectivenessFixedWing::updateSetpoint(const matrix::Vector<float, NUM_AXES> &control_sp,
 		int matrix_index, ActuatorVector &actuator_sp, const matrix::Vector<float, NUM_ACTUATORS> &actuator_min,
 		const matrix::Vector<float, NUM_ACTUATORS> &actuator_max)
