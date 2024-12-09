@@ -327,6 +327,19 @@ ControlAllocator::Run()
 		}
 	}
 
+	vehicle_attitude_s vehicle_attitude;
+
+	if (_vehicle_attitude_sub.updated()) {
+		_vehicle_attitude_sub.copy(&vehicle_attitude);
+		matrix::Eulerf attitude = matrix::Quatf(vehicle_attitude.q);
+		_pitch_avian = math::degrees(attitude(1)); // Convert pitch to degrees
+		// Create the message
+		pitch_debug_msg.timestamp = hrt_absolute_time();
+		pitch_debug_msg.pitch = _pitch_avian;
+		// Publish the message using uORB::Publication
+		_pitch_debug_pub.publish(pitch_debug_msg);
+	}
+
 	if (_num_control_allocation == 0 || _actuator_effectiveness == nullptr) {
 		return;
 	}

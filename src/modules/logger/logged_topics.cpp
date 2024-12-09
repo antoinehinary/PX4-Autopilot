@@ -96,6 +96,7 @@ void LoggedTopics::add_default_topics()
 	add_topic("npfg_status", 100);
 	add_topic("offboard_control_mode", 100);
 	add_topic("onboard_computer_status", 10);
+	add_topic("pitch_debug", 50);
 	add_topic("parameter_update");
 	add_topic("position_controller_status", 500);
 	add_topic("position_controller_landing_status", 100);
@@ -261,6 +262,7 @@ void LoggedTopics::add_high_rate_topics()
 	add_topic("sensor_combined");
 	add_topic("vehicle_angular_velocity");
 	add_topic("vehicle_attitude");
+	add_topic("pitch_debug");
 	add_topic("vehicle_attitude_setpoint");
 	add_topic("vehicle_rates_setpoint");
 
