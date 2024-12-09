@@ -218,10 +218,10 @@ private:
 		(ParamInt<px4::params::CA_R_REV>) _param_r_rev
 	)
 
-	// Add a member variable for the publisher in the class definition
-	uORB::Publication<pitch_debug_s> _pitch_debug_pub{ORB_ID(pitch_debug)};
-	uORB::Subscription _vehicle_attitude_sub{ORB_ID(vehicle_attitude)};
-	pitch_debug_s pitch_debug_msg{};
-	float _pitch_avian;
+	// // Add a member variable for the publisher in the class definition
+	// uORB::Publication<pitch_debug_s> _pitch_debug_pub{ORB_ID(pitch_debug)};
+	// uORB::Subscription _vehicle_attitude_sub{ORB_ID(vehicle_attitude)};
+	// pitch_debug_s pitch_debug_msg{};
+	// float _pitch_avian;
 
 };

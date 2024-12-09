@@ -127,6 +127,7 @@ public:
 		uint8_t matrix_selection_indexes[NUM_ACTUATORS * MAX_NUM_MATRICES];
 		int num_actuators[(int)ActuatorType::COUNT];
 
+
 		// Add a member variable for the publisher in the class definition
 		uORB::Publication<pitch_debug_s> _pitch_debug_pub{ORB_ID(pitch_debug)};
 		uORB::Subscription _vehicle_attitude_sub{ORB_ID(vehicle_attitude)};

@@ -48,7 +48,6 @@ int ActuatorEffectiveness::Configuration::addActuator(ActuatorType type, const m
 		matrix::Eulerf attitude = matrix::Quatf(vehicle_attitude.q);
 		_pitch_avian = math::degrees(attitude(1)); // Convert pitch to degrees
 		// Create the message
-		PX4_INFO("Publishing pitch_debug...");
 		pitch_debug_msg.timestamp = hrt_absolute_time();
 		pitch_debug_msg.pitch = _pitch_avian;
 		// Publish the message using uORB::Publication
